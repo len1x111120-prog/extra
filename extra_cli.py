@@ -1579,10 +1579,7 @@ def ask_intent(user_text):
 
 
 def one_turn(msgs, user_text):
-    sks = load_skills()
-    sk_list = ("\n\nSKILLS (expert instructions you can load with the use_skill tool when the work matches):\n"
-               + "\n".join(f"- {v['name']}: {v['description']}" for v in sks.values())) if sks else ""
-    sys_msg = {"role": "system", "content": SYSTEM.replace("{today}", time.strftime("%Y-%m-%d (%A)")).replace("{lang_rule}", lang_rule()) + sk_list + J.prompt_block(PROMPT_ROOT)}
+    sys_msg = {"role": "system", "content": system_prefix() + J.prompt_block(PROMPT_ROOT)}
     orig_text = user_text
     if not msgs:   # 새 작업의 첫 말: 먼저 무엇을 원하는지 이해하고(구체적이지 않으면 질문), 폴더 전체를 같이 준다 + 맞는 스킬
         extra_ask = ask_intent(orig_text)
@@ -2345,14 +2342,31 @@ def model_loaded():
         return False
 
 
+def system_prefix():
+    """시스템 프롬프트의 안정된 앞부분 (SYSTEM + 스킬 목록). CWD 에 따라 달라지는 prompt_block 은 뒤에 따로 붙인다.
+    로드할 때 이 부분을 미리 읽혀(캐시) 두면 첫 대화의 프롬프트 처리가 빨라진다 (사용자 11/16)."""
+    sks = load_skills()
+    sk_list = ("\n\nSKILLS (expert instructions you can load with the use_skill tool when the work matches):\n"
+               + "\n".join(f"- {v['name']}: {v['description']}" for v in sks.values())) if sks else ""
+    return SYSTEM.replace("{today}", time.strftime("%Y-%m-%d (%A)")).replace("{lang_rule}", lang_rule()) + sk_list
+
+
+# 로드 때 프롬프트를 읽으라는 짧은 지시 (사용자가 설정한 언어로)
+READY_MSG = {"en": "Reply with only: ready", "ko": "안내를 다 읽었으면 'ready'라고만 답하세요.",
+             "ja": "指示を読んだら 'ready' とだけ答えてください。", "zh": "读完说明后只回复：ready",
+             "es": "Responde solo con: ready", "de": "Antworte nur mit: ready", "fr": "Réponds seulement : ready"}
+
+
 def warm_up():
     """화면이 뜨자마자 뒤에서 모델을 미리 올려 둔다 (첫 질문이 '생각 중'에서 오래 멈추지 않게)."""
     if WARM["thread"]:
         return
     def go():
         try:
-            body = {"model": app.current_model(), "messages": [{"role": "user", "content": "hi"}], "stream": False, "keep_alive": "30m",
-                    "options": {"num_predict": 1, "num_ctx": app.NUM_CTX}}
+            msg = READY_MSG.get(SETTINGS.get("language", "en"), READY_MSG["en"])
+            body = {"model": app.current_model(),
+                    "messages": [{"role": "system", "content": system_prefix()}, {"role": "user", "content": msg}],
+                    "stream": False, "keep_alive": "30m", "options": {"num_predict": 2, "num_ctx": app.NUM_CTX}}
             urllib.request.urlopen(urllib.request.Request(app.OLLAMA_CHAT, data=json.dumps(body).encode()), timeout=300).read()
             WARM["ok"] = True
         except Exception as e:
