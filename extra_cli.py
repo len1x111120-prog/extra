@@ -1511,19 +1511,15 @@ def ask_intent(user_text):
     돌아오는 값: 사용자가 고르거나 적은 보충 설명(문자열), 또는 None(물을 필요 없음 / 물을 수 없음)."""
     if HEADLESS or not sys.stdin.isatty() or len(user_text) > 280:
         return None   # 백그라운드이거나, 이미 충분히 긴(구체적인) 요청이면 묻지 않는다
-    tv = ThinkView("Understanding")
+    tv = ThinkView("Understanding")   # 머리글 스피너만 돈다 (내용은 흘리지 않는다 → 끝에 사라지지 않게)
     out = ""
     try:
         for chunk in app.ollama_stream([{"role": "system", "content": CLARIFY_SYS}, {"role": "user", "content": user_text}],
                                        tools=False, stop=None, temp=0.2):
-            t = (chunk.get("message") or {}).get("content") or ""
-            if t:
-                out += t
-                tv.add(t)
+            out += (chunk.get("message") or {}).get("content") or ""
     except Exception:
         tv.close(); return None
-    tv.text = ""   # 이 단계는 화면에 남기지 않는다 (질문만 따로 보여 준다)
-    tv.close()
+    tv.close()   # 아무 글도 add 하지 않았으니 깨끗이 사라지고, 질문이 있으면 아래에 따로 보여 준다
     out = re.sub(r"</?think>", "", out).strip()
     if not out or out.split()[0].upper().startswith("CLEAR"):
         return None
