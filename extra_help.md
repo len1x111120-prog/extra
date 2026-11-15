@@ -40,6 +40,9 @@
 - When it writes a file, you see the lines being written in a small window, then a summary like: index.html · 40 lines +40 −0. Open the file to see all of it.
 - While it prepares a tool call you see a spinner: working on the next action… 12s.
 
+## Understanding your request
+- When you start a new task, extra first works out what you want. If the request is too vague, it asks one short question with a few options — pick a number, type your own answer, or press Enter to let it decide and go ahead.
+
 ## How it thinks (effort and verify)
 - Each step: a thinking step in English (shown in full, labels colored), then a real action with a tool.
 - effort low: Plan → Act. medium: Plan → Options → Act. high (default): Plan → Options → Expect (predict what each option will do) → Act.

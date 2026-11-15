@@ -1488,13 +1488,82 @@ def _fit(view, budget):
     return out
 
 
+CLARIFY_SYS = (
+    "You are extra, a coding and computer assistant. The user just gave you a request. Decide if you can reasonably start.\n"
+    "Default to CLEAR. Only ask when the request is so vague or open-ended that any reasonable person would have to ask back, "
+    "or when a choice would send the work in completely different directions. If you can make a sensible assumption and begin, "
+    "choose CLEAR — do NOT ask about minor details you can decide yourself.\n"
+    "- Enough to start: reply with exactly: CLEAR\n"
+    "- Genuinely need a decision from them: ask ONE short question with 2 to 4 concrete, pickable options.\n"
+    "Use EXACTLY this format when asking (nothing else):\n"
+    "ASK\n"
+    "<one short question>\n"
+    "- <a concrete choice>\n"
+    "- <a concrete choice>\n"
+    "Examples:\n"
+    "User: \"make me an app\" -> ASK (what kind). User: \"add a dark mode toggle to styles.css\" -> CLEAR (just do it). "
+    "User: \"build a game\" -> ASK (which kind of game). User: \"fix the failing test\" -> CLEAR.\n"
+    "Each option must be something they can pick, not another question. Answer in English only.")
+
+
+def ask_intent(user_text):
+    """새 작업을 받으면 먼저 '무엇을 원하는가'를 생각하고, 구체적이지 않으면 선택지+직접 입력으로 묻는다 (사용자 11/15).
+    돌아오는 값: 사용자가 고르거나 적은 보충 설명(문자열), 또는 None(물을 필요 없음 / 물을 수 없음)."""
+    if HEADLESS or not sys.stdin.isatty() or len(user_text) > 280:
+        return None   # 백그라운드이거나, 이미 충분히 긴(구체적인) 요청이면 묻지 않는다
+    tv = ThinkView("Understanding")
+    out = ""
+    try:
+        for chunk in app.ollama_stream([{"role": "system", "content": CLARIFY_SYS}, {"role": "user", "content": user_text}],
+                                       tools=False, stop=None, temp=0.2):
+            t = (chunk.get("message") or {}).get("content") or ""
+            if t:
+                out += t
+                tv.add(t)
+    except Exception:
+        tv.close(); return None
+    tv.text = ""   # 이 단계는 화면에 남기지 않는다 (질문만 따로 보여 준다)
+    tv.close()
+    out = re.sub(r"</?think>", "", out).strip()
+    if not out or out.split()[0].upper().startswith("CLEAR"):
+        return None
+    lines = [l.rstrip() for l in out.splitlines() if l.strip()]
+    if lines and lines[0].upper().startswith("ASK"):
+        lines = lines[1:]
+    if not lines:
+        return None
+    question = lines[0].lstrip("#*- ").strip()
+    options = [l.lstrip("-*•0123456789. ").strip() for l in lines[1:] if l.lstrip().startswith(("-", "*", "•")) or re.match(r"\s*\d+[.)]", l)]
+    if not options:
+        return None
+    print(f"\n {P}◆{R} {W}{question}{R}")
+    for i, opt in enumerate(options[:4], 1):
+        print(f" {W}{i}{R}  {opt}")
+    print(f" {D}0  something else — type it. (Enter = just go ahead){R}")
+    try:
+        a = read_answer(f"{P} › {R}").strip()
+    except (EOFError, KeyboardInterrupt):
+        print(); return None
+    if not a:
+        return None   # 그냥 진행
+    if a.isdigit():
+        n = int(a)
+        if 1 <= n <= len(options[:4]):
+            return options[n - 1]
+        return None   # 0 인데 아무것도 안 적음 → 진행
+    return a   # 직접 입력한 내용
+
+
 def one_turn(msgs, user_text):
     sks = load_skills()
     sk_list = ("\n\nSKILLS (expert instructions you can load with the use_skill tool when the work matches):\n"
                + "\n".join(f"- {v['name']}: {v['description']}" for v in sks.values())) if sks else ""
     sys_msg = {"role": "system", "content": SYSTEM.replace("{today}", time.strftime("%Y-%m-%d (%A)")).replace("{lang_rule}", lang_rule()) + sk_list + J.prompt_block(PROMPT_ROOT)}
     orig_text = user_text
-    if not msgs:   # 새 작업의 첫 말: 작업 폴더 전체를 같이 준다 + 맞는 스킬
+    if not msgs:   # 새 작업의 첫 말: 먼저 무엇을 원하는지 이해하고(구체적이지 않으면 질문), 폴더 전체를 같이 준다 + 맞는 스킬
+        extra_ask = ask_intent(orig_text)
+        if extra_ask:
+            user_text = user_text + "\n\n[The user clarified what they want: " + extra_ask + "]"
         if CWD != HOME:   # 홈에서 시작 = 아직 뭘 할지 안 정한 것 → 폴더를 훑지 않는다 (사용자 11/15)
             user_text = user_text + "\n\n[" + project_overview() + "]"
         for name in pick_skills(orig_text):
