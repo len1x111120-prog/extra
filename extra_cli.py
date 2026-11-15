@@ -1231,15 +1231,48 @@ class ThinkView:
         self.review = label.startswith("Verif")
         STEP[0] += 1
         self.n = STEP[0]
-        self.head = f"{O}◆ Verifying…{R}" if self.review else f"{P}◆{R}{D} {label}…{R}"   # 검증 중은 주황
+        self.word = "Verifying" if self.review else label
+        self.color = O if self.review else P
+        self.head = f"{self.color}◆ {self.word}…{R}"
         self.box = LiveBox(10, D, "  ")
+        self.box.head = self.head
+        self._first = False
+        self._spin_on = live()
         if UI.on:
-            self.box.head = self.head
             UI.set_box([self.head])
         else:
             sys.stdout.write(self.head + "\n"); sys.stdout.flush()
+        if self._spin_on:          # 첫 토큰 전까지 머리글을 돌린다: "◆ ⠹ Thinking… 8s"
+            import threading
+            self._t0 = time.time()
+            self._th = threading.Thread(target=self._spin, daemon=True); self._th.start()
+
+    def _spin(self):
+        frames = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+        i = 0
+        while self._spin_on and not self._first:
+            el = time.time() - self._t0
+            head = f"{self.color}◆ {frames[i % 10]} {self.word}…{R} {D}{el:0.0f}s{R}"
+            self.head = head; self.box.head = head
+            if UI.on:
+                UI.set_box([head])
+            else:
+                sys.stdout.write(f"\r{head}\x1b[K"); sys.stdout.flush()
+            i += 1
+            time.sleep(0.12)
+
+    def _stop_spin(self):
+        if self._spin_on and not self._first:
+            self._first = True
+            self._spin_on = False
+            try: self._th.join(0.3)
+            except Exception: pass
+            self.head = f"{self.color}◆ {self.word}…{R}"; self.box.head = self.head
+            if not UI.on:
+                sys.stdout.write("\r\x1b[K" + self.head + "\n"); sys.stdout.flush()
 
     def add(self, t):
+        self._stop_spin()
         self.raw += t
         clean = re.sub(r"</?t?h?i?n?k?$", "", re.sub(r"</?think>", "", self.raw)).lstrip()   # 조각으로 와도 태그를 지운다
         new = clean[len(self.text):] if clean.startswith(self.text) else None
@@ -1256,6 +1289,7 @@ class ThinkView:
         return len(lines) >= 6 and len(set(lines)) <= 2
 
     def close(self):
+        self._spin_on = False
         self.box.close()
         lines = shown_lines(self.text)
         if not lines or not self.text.strip():
@@ -1461,7 +1495,8 @@ def one_turn(msgs, user_text):
     sys_msg = {"role": "system", "content": SYSTEM.replace("{today}", time.strftime("%Y-%m-%d (%A)")).replace("{lang_rule}", lang_rule()) + sk_list + J.prompt_block(PROMPT_ROOT)}
     orig_text = user_text
     if not msgs:   # 새 작업의 첫 말: 작업 폴더 전체를 같이 준다 + 맞는 스킬
-        user_text = user_text + "\n\n[" + project_overview() + "]"
+        if CWD != HOME:   # 홈에서 시작 = 아직 뭘 할지 안 정한 것 → 폴더를 훑지 않는다 (사용자 11/15)
+            user_text = user_text + "\n\n[" + project_overview() + "]"
         for name in pick_skills(orig_text):
             print(f"{P}✦ using skill:{R} {W}{name}{R}")
             user_text += "\n\n" + skill_text(name)
@@ -1500,16 +1535,13 @@ def one_turn(msgs, user_text):
                 while len(view) > 1 and view[0]["role"] != "user":
                     view.pop(0)
             tv = ThinkView("Verifying" if review else "Thinking")
-            tick = Ticker("thinking (local model — first reply can take a bit)")   # 첫 토큰까지 경과 표시 (멈춘 게 아님을 보여 준다)
             for chunk in app.ollama_stream([sys_msg] + view, tools=False, stop=["</think>"], temp=0.3 + 0.2 * attempt):
                 t = (chunk.get("message") or {}).get("content") or ""
                 if t:
-                    tick.stop()
                     tv.add(t)
                     if tv.looping():
                         tv.text = ""   # 반복에 빠졌다 → 버리고 다시 (온도를 올려서)
                         break
-            tick.stop()
             tv.close()
             thought = tv.text.strip()
             if thought:
