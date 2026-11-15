@@ -1489,21 +1489,25 @@ def _fit(view, budget):
 
 
 CLARIFY_SYS = (
-    "You are extra, a coding and computer assistant. The user just gave you a request. Decide if you can reasonably start.\n"
-    "Default to CLEAR. Only ask when the request is so vague or open-ended that any reasonable person would have to ask back, "
-    "or when a choice would send the work in completely different directions. If you can make a sensible assumption and begin, "
-    "choose CLEAR — do NOT ask about minor details you can decide yourself.\n"
-    "- Enough to start: reply with exactly: CLEAR\n"
-    "- Genuinely need a decision from them: ask ONE short question with 2 to 4 concrete, pickable options.\n"
-    "Use EXACTLY this format when asking (nothing else):\n"
+    "Decide whether to ask the user a clarifying question before acting. Reply with ONE word on the first line: CLEAR or ASK.\n\n"
+    "Reply CLEAR (do NOT ask) for almost everything, including:\n"
+    "- greetings, thanks, small talk, or anything conversational (hi, hello, 안녕, how are you)\n"
+    "- a question you can simply answer (what can you do, 그냥 질문이야, explain X)\n"
+    "- any request where you can make a sensible assumption and start, even if some details are open\n\n"
+    "Reply ASK ONLY when ALL of these are true:\n"
+    "1) the user is asking you to BUILD, MAKE, WRITE, or DO something concrete, AND\n"
+    "2) a key detail is missing that would send the work in completely different directions, AND\n"
+    "3) you genuinely cannot pick a reasonable default yourself.\n"
+    "When unsure, choose CLEAR. It is better to start and adjust than to interrogate the user.\n\n"
+    "When (and only when) you ASK, use EXACTLY this format after the ASK line:\n"
     "ASK\n"
-    "<one short question>\n"
+    "<one short question in the user's language>\n"
     "- <a concrete choice>\n"
     "- <a concrete choice>\n"
+    "Each option must be a thing they can pick, not another question. Give 2 to 4 options.\n\n"
     "Examples:\n"
-    "User: \"make me an app\" -> ASK (what kind). User: \"add a dark mode toggle to styles.css\" -> CLEAR (just do it). "
-    "User: \"build a game\" -> ASK (which kind of game). User: \"fix the failing test\" -> CLEAR.\n"
-    "Each option must be something they can pick, not another question. Answer in English only.")
+    "\"안녕\" -> CLEAR.  \"그냥 질문이야\" -> CLEAR.  \"what can you do?\" -> CLEAR.  \"fix the failing test\" -> CLEAR.\n"
+    "\"add dark mode to styles.css\" -> CLEAR.  \"make me an app\" -> ASK (what kind).  \"build a game\" -> ASK (which game).")
 
 
 def ask_intent(user_text):
@@ -1515,7 +1519,7 @@ def ask_intent(user_text):
     out = ""
     try:
         for chunk in app.ollama_stream([{"role": "system", "content": CLARIFY_SYS}, {"role": "user", "content": user_text}],
-                                       tools=False, stop=None, temp=0.2):
+                                       tools=False, stop=None, temp=0.0):
             out += (chunk.get("message") or {}).get("content") or ""
     except Exception:
         tv.close(); return None
