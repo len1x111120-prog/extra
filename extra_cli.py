@@ -233,6 +233,8 @@ def session_skills_menu():
         idx = {int(x) for x in re.findall(r"\d+", a)}
         chosen = [v["name"] for i, v in enumerate(sks, 1) if i in idx]
     print(f" {P}✦ skills:{R} {W}{', '.join(chosen) if chosen else 'none'}{R}")
+    global SESSION_SKILL_TEXT
+    SESSION_SKILL_TEXT = ("\n\n" + "\n\n".join(skill_text(n) for n in chosen)) if chosen else ""
     return chosen
 
 
@@ -1651,7 +1653,7 @@ def chat_reply(msgs, sys_msg, user_text):
 
 
 def one_turn(msgs, user_text):
-    sys_msg = {"role": "system", "content": system_prefix() + J.prompt_block(PROMPT_ROOT)}
+    sys_msg = {"role": "system", "content": system_prefix() + SESSION_SKILL_TEXT + J.prompt_block(PROMPT_ROOT)}
     orig_text = user_text
     if CWD == HOME and is_chat(orig_text):   # 홈 = 아직 작업 안 정함. 대화는 바로 답한다 (생각·도구 없이). 11/16
         chat_reply(msgs, sys_msg, orig_text)
@@ -1662,12 +1664,12 @@ def one_turn(msgs, user_text):
             user_text = user_text + "\n\n[The user clarified what they want: " + extra_ask + "]"
         if CWD != HOME:   # 홈에서 시작 = 아직 뭘 할지 안 정한 것 → 폴더를 훑지 않는다 (사용자 11/15)
             user_text = user_text + "\n\n[" + project_overview() + "]"
-        use = SESSION_SKILLS if SESSION_SKILLS is not None else pick_skills(orig_text)
-        if use:
-            print(f"{P}✦ using skills:{R} {W}{', '.join(use)}{R}")
-        for name in use:
-            user_text += "\n\n" + skill_text(name)
-            clog({"skill": name})
+        if SESSION_SKILLS is None:   # 세션에서 안 골랐으면(이어받기 등) 작업마다 자동으로 맞는 스킬을 사용자 메시지에 붙인다
+            for name in pick_skills(orig_text):
+                print(f"{P}✦ using skill:{R} {W}{name}{R}")
+                user_text += "\n\n" + skill_text(name)
+                clog({"skill": name})
+        # 세션 스킬은 이미 시스템 메시지(SESSION_SKILL_TEXT)에 들어가 있다 (캐시됨)
     msgs.append({"role": "user", "content": user_text})
     clog({"user": orig_text})
     if len([m for m in msgs if m["role"] == "user"]) == 1:   # 새 작업: 지금 있는 시험 파일을 보호
@@ -2457,6 +2459,8 @@ def folder_summary():
 WARM = {"thread": None, "start": 0.0, "ok": None}
 PWARM = {"thread": None, "start": 0.0, "ok": None}   # 시스템 프롬프트 읽기(캐시) 상태
 SESSION_SKILLS = None   # 시작할 때 고른 스킬 (세션 내내 적용). None = 안 골랐으니 자동.
+SESSION_SKILL_TEXT = ""   # 고른 스킬의 전체 지시 (시스템 메시지에 넣어 캐시되게)
+SWARM = {"thread": None, "start": 0.0, "ok": None}   # 스킬 읽기(캐시) 상태
 LOAD_FILE = HOME / ".extra" / "load_seconds"
 
 
@@ -2767,6 +2771,11 @@ def main():
         first = start_menu()
         global SESSION_SKILLS
         SESSION_SKILLS = session_skills_menu()   # 'What do you want to do?' 다음에 스킬 고르기 (사용자 11/16)
+        if SESSION_SKILL_TEXT:   # 고른 스킬을 미리 읽혀 둔다 (사용자 11/16: 첫 작업에서 스킬 읽느라 멈춘 듯 느렸다)
+            msg = READY_MSG.get(SETTINGS.get("language", "en"), READY_MSG["en"])
+            _warm([{"role": "system", "content": system_prefix() + SESSION_SKILL_TEXT}, {"role": "user", "content": msg}], SWARM)
+            _progress(SWARM, "reading the skills", 15.0, "skills ready")
+            print()
     # (extra continue 는 위에서 이미 로드하고 골랐다)
     UI.on_command = busy_command
     FLOG.open(CWD)
