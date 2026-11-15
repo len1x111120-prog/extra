@@ -56,11 +56,11 @@ result back.
 Four built-in skills (design, browser testing, systematic debugging, verify-before-done) are short instruction files adapted
 from open-source skills. extra attaches the matching ones automatically based on your request. See `THIRD_PARTY_NOTICES.md`.
 
-## What is NOT in the beta
+## Harness today, model later
 
-The beta uses the base Ministral 3 8B model unchanged — everything above is in the harness (this code), not the weights. The
-planned full version trains a LoRA on top of the model so the behaviour above comes from the model itself, not only from the
-prompts and guardrails here.
+The beta uses the base Ministral 3 8B model unchanged — everything above is in the harness (this code), not the weights. A
+fine-tuned model, so the behaviour above comes from the model itself and not only from the prompts and guardrails here, is a
+planned next step.
 
 ## Privacy and safety
 
