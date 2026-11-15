@@ -800,7 +800,7 @@ launchctl setenv OLLAMA_KV_CACHE_TYPE q8_0</pre></div>
   const LANGS = ["en", "ko", "ja", "zh", "es", "de", "fr"];
   let lang = "en";
   try { lang = localStorage.getItem("extra-lang") || ""; } catch (e) { lang = ""; }
-  if (!LANGS.includes(lang)) lang = LANGS.find((l) => (navigator.language || "en").toLowerCase().startsWith(l)) || "en";
+  if (!LANGS.includes(lang)) lang = "en";   // default to English; the dropdown choice is remembered
   const tr = (k) => (T[k] || [k])[LANGS.indexOf(lang)] || (T[k] || [k])[0];
   function applyLang() {
     document.documentElement.lang = lang === "zh" ? "zh-Hans" : lang;
