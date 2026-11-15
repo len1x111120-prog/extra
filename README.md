@@ -7,9 +7,9 @@ It is slow next to a frontier model, so it is built to make up for that with pat
 result and tries another way when something fails, for as long as the task needs. It can also **continue a task Claude Code
 started** when you hit your usage limit, or take a piece of work from Claude in the background.
 
-> Beta: free while it is in beta. It has been tested on a small number of tasks; expect rough edges and please send feedback.
+> Beta: free while it is in beta. It has been tested on a small number of tasks so far; expect rough edges, and please send feedback.
 
-**Website — see the demo, leave feedback, get notified when the full version launches:** https://claude.ai/artifact/4pK1uSSLC1VF26zf5kwyWe
+**Website — see the demo, leave feedback, get notified when a new version is ready:** https://claude.ai/artifact/4pK1uSSLC1VF26zf5kwyWe
 
 ## Requirements
 - A Mac (Apple Silicon recommended), macOS 13 or newer, 16 GB memory recommended, about 10 GB free disk
