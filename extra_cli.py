@@ -1256,6 +1256,7 @@ class ThinkView:
             self.head = head; self.box.head = head
             if UI.on:
                 UI.set_box([head])
+                UI.set_status(f"{self.color}{frames[i % 10]}{R} {D}{self.word.lower()}… {el:0.0f}s{R}")   # 상태줄에도 (확실히 보이게)
             else:
                 sys.stdout.write(f"\r{head}\x1b[K"); sys.stdout.flush()
             i += 1
@@ -1265,6 +1266,8 @@ class ThinkView:
         if self._spin_on and not self._first:
             self._first = True
             self._spin_on = False
+            if UI.on:
+                UI.set_status("")
             try: self._th.join(0.3)
             except Exception: pass
             self.head = f"{self.color}◆ {self.word}…{R}"; self.box.head = self.head
@@ -1289,6 +1292,8 @@ class ThinkView:
         return len(lines) >= 6 and len(set(lines)) <= 2
 
     def close(self):
+        if self._spin_on and UI.on:
+            UI.set_status("")
         self._spin_on = False
         self.box.close()
         lines = shown_lines(self.text)
@@ -1521,6 +1526,11 @@ def ask_intent(user_text):
         for chunk in app.ollama_stream([{"role": "system", "content": CLARIFY_SYS}, {"role": "user", "content": user_text}],
                                        tools=False, stop=None, temp=0.0):
             out += (chunk.get("message") or {}).get("content") or ""
+            low = out.strip().upper()
+            if low.startswith("CLEAR") or low.startswith("CLEA"):   # 물을 필요 없음 → 더 생성하지 않고 끊는다
+                out = "CLEAR"; break
+            if len(out) > 400:                                      # 질문은 이 정도면 충분, 폭주 방지
+                break
     except Exception:
         tv.close(); return None
     tv.close()   # 아무 글도 add 하지 않았으니 깨끗이 사라지고, 질문이 있으면 아래에 따로 보여 준다
