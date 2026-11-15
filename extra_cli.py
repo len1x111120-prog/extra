@@ -1922,28 +1922,29 @@ def recent_folders(limit=8):
 
 
 def start_menu():
-    """모델을 올린 뒤 무엇을 할지 번호로 고른다 (사용자 11/15): 1) 작업 이어받기 2) 폴더에서 일하기.
-    이어받기를 고르면 이어받을 글을 돌려주고, 폴더를 고르면 None (대화형으로 시작)."""
+    """모델을 올린 뒤 무엇을 할지 번호로 고른다 (사용자 11/15): 1) 작업 이어받기 2) 폴더에서 일하기 3) 그냥 시작.
+    이어받기를 고르면 이어받을 글을 돌려주고, 나머지는 None (대화형으로 바로 시작)."""
     in_project = CWD != HOME
     here = CWD.name
     rows = [("Continue a task", "pick up a Claude handoff note or session"),
             (f"Work in this folder ({here})" if in_project else "Work in a folder",
-             "start a new task here" if in_project else "choose a folder, or make one")]
+             "start a new task here" if in_project else "choose a folder, or make one"),
+            ("Just start", "skip this and start typing here" + (f" (~/{CWD.relative_to(HOME)})" if in_project and str(CWD).startswith(str(HOME)) else " (home folder)" if CWD == HOME else f" ({here})"))]
     print(f"\n {B}What do you want to do?{R}")
-    for i, (label, desc) in enumerate(rows, 1):
-        mark = f" {D}(Enter){R}" if (i == 2 and in_project) or (i == 1 and not in_project) else ""
-        print(f" {W}{i}{R}  {pad(label, 30)} {D}{desc}{R}{mark}")
     default = 2 if in_project else 1
+    for i, (label, desc) in enumerate(rows, 1):
+        mark = f" {D}(Enter){R}" if i == default else ""
+        print(f" {W}{i}{R}  {pad(label, 30)} {D}{desc}{R}{mark}")
     try:
         a = read_answer(f"{P} › {R}").strip()
     except (EOFError, KeyboardInterrupt):
         print(); return None
-    choice = int(a) if a.isdigit() and 1 <= int(a) <= 2 else default
+    choice = int(a) if a.isdigit() and 1 <= int(a) <= 3 else default
     if choice == 1:
         return pick_session()
-    if not in_project:
+    if choice == 2 and not in_project:
         pick_folder()
-    return None
+    return None   # 2(여기서 일하기) 또는 3(그냥 시작): 지금 폴더에서 바로 대화형 시작
 
 
 def pick_folder():

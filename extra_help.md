@@ -10,7 +10,7 @@
   model went from 72.3% to 79.1% with extra's method (p = 0.0055).
 
 ## Starting extra (shell commands)
-- `extra` — start extra. It loads the model (with a progress bar), then asks by number: 1 continue a task, 2 work in a folder.
+- `extra` — start extra. It loads the model (with a progress bar), then asks by number: 1 continue a task, 2 work in a folder, 3 just start (begin typing in the current folder).
 - `extra <folder>` — start in that folder (it is created if missing). On start extra shows what is in the folder
   (file count, top-level names, README first line, git changes, a handoff note if there is one) and waits for you.
 - `extra "task"` — do one task and exit.
