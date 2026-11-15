@@ -1340,8 +1340,11 @@ class Stop(Exception):
     pass
 
 
-def project_overview(limit=150):
-    """작업 폴더 전체를 한눈에: 파일 구조와 README 앞부분 (첫 질문에 붙여서 모델이 프로젝트 전체를 알고 시작하게)."""
+def project_overview(limit=120):
+    """작업 폴더 전체를 한눈에: 파일 구조와 README 앞부분 (첫 질문에 붙여서 모델이 프로젝트 전체를 알고 시작하게).
+    너무 크면 로컬 모델이 느려지므로 크기를 제한한다 (11/15: 홈에서 시작하니 ~3700 토큰이 붙어 멈춘 듯 느려졌다)."""
+    if CWD == HOME:   # 홈 폴더 전체를 훑지 않는다 (느림·프라이버시). 프로젝트 폴더에서 열라고만.
+        return "Working in the home folder (no project scan). Open a project folder for a full overview, e.g. a folder under ~/Documents."
     rows = []
     for base, dirs, files in os.walk(CWD):
         dirs[:] = sorted(d for d in dirs if d not in SKIP and not d.startswith("."))
@@ -1355,11 +1358,12 @@ def project_overview(limit=150):
         if len(rows) >= limit:
             break
     out = "Project folder files (first %d):\n" % min(limit, len(rows)) + "\n".join(rows[:limit]) if rows else "The project folder is empty."
+    out = out[:2500]   # 파일 목록은 여기까지 (프롬프트를 작게 유지)
     for name in ("README.md", "readme.md", "CLAUDE.md", ".extra/handoff.md"):
         f = CWD / name
         if f.is_file():
-            out += f"\n\n{name} (start):\n" + f.read_text(errors="replace")[:1500]
-    return out
+            out += f"\n\n{name} (start):\n" + f.read_text(errors="replace")[:1200]
+    return out[:4500]   # overview 전체 상한 (~1200 토큰)
 
 
 def locate_errors(output):
@@ -1496,13 +1500,16 @@ def one_turn(msgs, user_text):
                 while len(view) > 1 and view[0]["role"] != "user":
                     view.pop(0)
             tv = ThinkView("Verifying" if review else "Thinking")
+            tick = Ticker("thinking (local model — first reply can take a bit)")   # 첫 토큰까지 경과 표시 (멈춘 게 아님을 보여 준다)
             for chunk in app.ollama_stream([sys_msg] + view, tools=False, stop=["</think>"], temp=0.3 + 0.2 * attempt):
                 t = (chunk.get("message") or {}).get("content") or ""
                 if t:
+                    tick.stop()
                     tv.add(t)
                     if tv.looping():
                         tv.text = ""   # 반복에 빠졌다 → 버리고 다시 (온도를 올려서)
                         break
+            tick.stop()
             tv.close()
             thought = tv.text.strip()
             if thought:
