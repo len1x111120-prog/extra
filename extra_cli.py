@@ -2510,22 +2510,22 @@ def speedup_on(restart=True):
 
 
 def load_bar():
-    """모델이 다 올라갈 때까지 로딩바 (사용자 11/14). 걸리는 시간은 지난번 기록으로 어림하고, 끝나면 100% 로 채운다. Ctrl-C 로 건너뛸 수 있다."""
-    if model_loaded():
-        print(f" {G}✓{R} {D}model ready · {app.current_model()}{R}\n")
-        return
-    warm_up()
+    """모델을 올리고 시스템 프롬프트를 미리 읽혀(캐시) 둔다 (사용자 11/16: 첫 대화 프롬프트 처리가 느려서).
+    이미 로드돼 있어도 프롬프트 읽기는 한다. 걸리는 시간은 지난번 기록으로 어림하고 끝나면 100%. Ctrl-C 로 건너뛸 수 있다."""
+    loaded = model_loaded()
+    warm_up()   # 모델 로드 + 시스템 프롬프트 읽기(캐시)
     try:
-        est = max(5.0, float(LOAD_FILE.read_text()))
+        est = max(5.0, float(LOAD_FILE.read_text()) if not loaded else 10.0)
     except (OSError, ValueError):
-        est = 25.0
+        est = 10.0 if loaded else 25.0
     width = 28
     try:
         while WARM["thread"].is_alive():
             el = time.time() - WARM["start"]
             frac = min(0.95, el / est) if el < est else 0.95 + 0.04 * (1 - 1 / (1 + (el - est) / est))
             n = int(width * frac)
-            sys.stdout.write(f"\r {P}◆{R} {D}loading {app.current_model()}{R}  {P}{'█' * n}{D}{'░' * (width - n)}{R} {W}{int(frac * 100):>3}%{R} {D}{el:4.0f}s{R}  ")
+            what = "reading the prompt" if loaded else f"loading {app.current_model()}"
+            sys.stdout.write(f"\r {P}◆{R} {D}{what}{R}  {P}{'█' * n}{D}{'░' * (width - n)}{R} {W}{int(frac * 100):>3}%{R} {D}{el:4.0f}s{R}  ")
             sys.stdout.flush()
             time.sleep(0.15)
     except KeyboardInterrupt:
@@ -2542,6 +2542,14 @@ def load_bar():
     else:
         sys.stdout.write(f"\r {E}✗ could not load the model{R} {D}{WARM['ok']} — is Ollama running? (open the Ollama app){R}\n\n")
     sys.stdout.flush()
+
+
+def logo():
+    """맨 처음 뜨는 extra 로고 (사용자 11/16: 로고가 가장 먼저)."""
+    print()
+    print(f"  {P}▟█▙{R}  {B}e x t r a{R}  {D}· beta{R}")
+    print(f"  {P}▜█▛{R}  {D}a terminal coding agent on a local model{R}")
+    print()
 
 
 def banner():
@@ -2595,6 +2603,7 @@ def main():
         help_command(" ".join(args[1:])); return
     msgs, first = [], None
     if args[:1] == ["continue"]:    # extra continue [덧붙일 말]: Claude 세션 목록에서 골라 이어서 (그다음은 대화형)
+        logo()
         load_bar()
         first = pick_session()
         if first is None:
@@ -2609,6 +2618,7 @@ def main():
             print(f"\n{D}stopped{R}")
         return
     if first is None:
+        logo()               # 로고가 가장 먼저 (사용자 11/16)
         first_setup()        # 맨 처음 한 번만: 언어, 생각, 검증, 허용 범위, 속도 (녹화에 나와야 한다)
         offer_speedup()      # 설정이 켜졌는데 Ollama 가 그 전에 켜진 경우만 알린다
         load_bar()           # 모델을 먼저 올린다 (로딩 바), 다 되면 무엇을 할지 고른다 (사용자 11/15)
