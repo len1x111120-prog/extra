@@ -2331,6 +2331,7 @@ def folder_summary():
 
 
 WARM = {"thread": None, "start": 0.0, "ok": None}
+PWARM = {"thread": None, "start": 0.0, "ok": None}   # 시스템 프롬프트 읽기(캐시) 상태
 LOAD_FILE = HOME / ".extra" / "load_seconds"
 
 
@@ -2357,24 +2358,26 @@ READY_MSG = {"en": "Reply with only: ready", "ko": "안내를 다 읽었으면 '
              "es": "Responde solo con: ready", "de": "Antworte nur mit: ready", "fr": "Réponds seulement : ready"}
 
 
-def warm_up():
-    """화면이 뜨자마자 뒤에서 모델을 미리 올려 둔다 (첫 질문이 '생각 중'에서 오래 멈추지 않게)."""
-    if WARM["thread"]:
-        return
+def _warm(messages, slot):
+    """백그라운드로 Ollama 에 한 번 보낸다 (모델 로드 또는 프롬프트 캐시). slot 에 상태를 남긴다."""
+    import threading
+    slot["start"], slot["ok"] = time.time(), None
     def go():
         try:
-            msg = READY_MSG.get(SETTINGS.get("language", "en"), READY_MSG["en"])
-            body = {"model": app.current_model(),
-                    "messages": [{"role": "system", "content": system_prefix()}, {"role": "user", "content": msg}],
-                    "stream": False, "keep_alive": "30m", "options": {"num_predict": 2, "num_ctx": app.NUM_CTX}}
+            body = {"model": app.current_model(), "messages": messages, "stream": False, "keep_alive": "30m",
+                    "options": {"num_predict": 2, "num_ctx": app.NUM_CTX}}
             urllib.request.urlopen(urllib.request.Request(app.OLLAMA_CHAT, data=json.dumps(body).encode()), timeout=300).read()
-            WARM["ok"] = True
+            slot["ok"] = True
         except Exception as e:
-            WARM["ok"] = f"{type(e).__name__}: {e}"
-    import threading
-    WARM["start"] = time.time()
-    WARM["thread"] = threading.Thread(target=go, daemon=True)
-    WARM["thread"].start()
+            slot["ok"] = f"{type(e).__name__}: {e}"
+    slot["thread"] = threading.Thread(target=go, daemon=True); slot["thread"].start()
+
+
+def warm_up():
+    """예전 이름 유지: 모델만 미리 올린다 (호환용)."""
+    if WARM["thread"]:
+        return
+    _warm([{"role": "user", "content": "hi"}], WARM)
 
 
 SPEED_ENV = {"OLLAMA_FLASH_ATTENTION": "1", "OLLAMA_KV_CACHE_TYPE": "q8_0"}
@@ -2509,39 +2512,53 @@ def speedup_on(restart=True):
         print(f"   {O}Ollama did not quit by itself.{R} {D}Quit it from the menu bar and open it again to use the new settings.{R}\n")
 
 
-def load_bar():
-    """모델을 올리고 시스템 프롬프트를 미리 읽혀(캐시) 둔다 (사용자 11/16: 첫 대화 프롬프트 처리가 느려서).
-    이미 로드돼 있어도 프롬프트 읽기는 한다. 걸리는 시간은 지난번 기록으로 어림하고 끝나면 100%. Ctrl-C 로 건너뛸 수 있다."""
-    loaded = model_loaded()
-    warm_up()   # 모델 로드 + 시스템 프롬프트 읽기(캐시)
-    try:
-        est = max(5.0, float(LOAD_FILE.read_text()) if not loaded else 10.0)
-    except (OSError, ValueError):
-        est = 10.0 if loaded else 25.0
+def _progress(slot, label, est, done_label):
+    """한 작업(모델 로드/프롬프트 읽기)의 진행 바를 그 자리에서 보여 주고, 끝나면 한 줄로 남긴다."""
     width = 28
     try:
-        while WARM["thread"].is_alive():
-            el = time.time() - WARM["start"]
+        while slot["thread"] and slot["thread"].is_alive():
+            el = time.time() - slot["start"]
             frac = min(0.95, el / est) if el < est else 0.95 + 0.04 * (1 - 1 / (1 + (el - est) / est))
             n = int(width * frac)
-            what = "reading the prompt" if loaded else f"loading {app.current_model()}"
-            sys.stdout.write(f"\r {P}◆{R} {D}{what}{R}  {P}{'█' * n}{D}{'░' * (width - n)}{R} {W}{int(frac * 100):>3}%{R} {D}{el:4.0f}s{R}  ")
+            sys.stdout.write(f"\r {P}◆{R} {D}{label}{R}  {P}{'█' * n}{D}{'░' * (width - n)}{R} {W}{int(frac * 100):>3}%{R} {D}{el:4.0f}s{R}  ")
             sys.stdout.flush()
             time.sleep(0.15)
     except KeyboardInterrupt:
-        print(f"\n {D}skipped — the model keeps loading in the background{R}\n")
-        return
-    el = time.time() - WARM["start"]
-    if WARM["ok"] is True:
-        sys.stdout.write(f"\r {G}✓{R} {D}model ready · {app.current_model()}{R}  {G}{'█' * width}{R} {W}100%{R} {D}{el:4.0f}s{R}  \n\n")
-        try:
-            LOAD_FILE.parent.mkdir(parents=True, exist_ok=True)
-            LOAD_FILE.write_text(f"{el:.1f}")
-        except OSError:
-            pass
-    else:
-        sys.stdout.write(f"\r {E}✗ could not load the model{R} {D}{WARM['ok']} — is Ollama running? (open the Ollama app){R}\n\n")
+        print(f"\n {D}skipped — it keeps running in the background{R}")
+        return None
+    el = time.time() - slot["start"]
+    if slot["ok"] is True:
+        sys.stdout.write(f"\r {G}✓{R} {D}{done_label}{R}  {G}{'█' * width}{R} {W}100%{R} {D}{el:4.0f}s{R}  \n")
+        sys.stdout.flush()
+        return el
+    sys.stdout.write(f"\r {E}✗ {label} failed{R} {D}{slot['ok']} — is Ollama running? (open the Ollama app){R}\n")
     sys.stdout.flush()
+    return None
+
+
+def load_bar():
+    """① 모델 로드  ② 시스템 프롬프트 읽기(캐시) — 각각 별도 줄의 진행 바 (사용자 11/16)."""
+    # ① 모델
+    if model_loaded():
+        print(f" {G}✓{R} {D}model ready · {app.current_model()}{R}")
+    else:
+        try:
+            est = max(5.0, float(LOAD_FILE.read_text()))
+        except (OSError, ValueError):
+            est = 25.0
+        if not WARM["thread"]:
+            _warm([{"role": "user", "content": "hi"}], WARM)
+        el = _progress(WARM, f"loading {app.current_model()}", est, f"model ready · {app.current_model()}")
+        if el:
+            try:
+                LOAD_FILE.parent.mkdir(parents=True, exist_ok=True); LOAD_FILE.write_text(f"{el:.1f}")
+            except OSError:
+                pass
+    # ② 시스템 프롬프트 읽기 (항상 별도 줄로 보여 준다; 캐시돼 있으면 금방 끝난다)
+    msg = READY_MSG.get(SETTINGS.get("language", "en"), READY_MSG["en"])
+    _warm([{"role": "system", "content": system_prefix()}, {"role": "user", "content": msg}], PWARM)
+    _progress(PWARM, "reading the prompt", 10.0, "prompt ready")
+    print()
 
 
 def logo():
