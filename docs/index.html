@@ -1,0 +1,873 @@
+<title>extra.</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* layout: one narrow column; a live terminal is the hero; modules as a quiet list; one price block */
+  :root {
+    color-scheme: dark;
+    --bg: #0c0814;          /* near-black, purple-biased */
+    --panel: #140e20;       /* terminal and price panel */
+    --line: #241a35;        /* hairlines */
+    --ink: #ece8f4;         /* text */
+    --ink-2: #a49cb8;       /* secondary text */
+    --ink-3: #6b6382;       /* captions */
+    --purple: #3d2470;      /* brand: dark purple */
+    --purple-2: #5b3aa8;    /* buttons */
+    --purple-3: #a58cf0;    /* highlights on dark */
+    --display: "Space Grotesk", "Inter", system-ui, sans-serif;
+    --body: "Inter", -apple-system, "Apple SD Gothic Neo", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--purple-2); color: #fff; }
+  a { color: inherit; }
+  .wrap { max-width: 920px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+  nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; align-items: center; gap: 24px; padding-block: 14px; }
+  .logo { font: 600 19px/1 var(--display); letter-spacing: -0.03em; text-decoration: none; }
+  .logo i, h1 i { font-style: normal; color: var(--purple-3); }
+  .logo .demo { font: 500 11px/1 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--purple-3); border: 1px solid var(--purple); border-radius: 6px; padding: 3px 6px; margin-left: 8px; vertical-align: 3px; }
+  .plan .when { font: 500 12px var(--mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; }
+  nav .links { display: flex; gap: 20px; margin-left: auto; font-size: 14px; color: var(--ink-2); }
+  nav .links a { text-decoration: none; }
+  nav .links a:hover { color: var(--ink); }
+  #lang { font: 13px var(--body); color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  #lang:focus-visible { outline: 2px solid var(--purple-3); outline-offset: 2px; }
+  nav .wrap #lang { margin-left: auto; }
+  nav .links + #lang { margin-left: 0; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; font: 500 14px/1 var(--body); padding: 12px 18px; border-radius: 10px; text-decoration: none; border: 1px solid transparent; cursor: pointer; }
+  .btn.primary { background: var(--purple-2); color: #fff; }
+  .btn.primary:hover { background: #6a48c0; }
+  .btn.ghost { border-color: var(--line); color: var(--ink-2); background: transparent; }
+  .btn.ghost:hover { color: var(--ink); border-color: var(--ink-3); }
+  .btn:focus-visible, nav a:focus-visible, button:focus-visible { outline: 2px solid var(--purple-3); outline-offset: 2px; }
+
+  header.hero { padding-block: 72px 56px; }
+  .hero .grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 48px; align-items: center; }
+  h1 { font: 600 clamp(40px, 7vw, 64px)/1.02 var(--display); letter-spacing: -0.04em; margin: 0 0 18px; text-wrap: balance; }
+  .lede { color: var(--ink-2); font-size: 17px; max-width: 34ch; margin: 0 0 28px; }
+  .cta { display: flex; gap: 10px; flex-wrap: wrap; }
+  .small { color: var(--ink-3); font-size: 13px; margin-top: 14px; }
+
+  .term { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; min-width: 0; }
+  .term .bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); font: 12px var(--mono); color: var(--ink-3); }
+  .term .bar span { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .term .bar b { font-weight: 400; margin-left: 8px; }
+  .term pre { margin: 0; padding: 16px 18px 18px; font: 12.6px/1.7 var(--mono); color: var(--ink-2); white-space: pre-wrap; word-break: break-word; min-height: 300px; }
+  /* terminal colors: purple = the model's own voice, white = what it decides, grey = detail, red = failure, green = success */
+  .term .pr { color: var(--purple-3); font-weight: 500; }      /* $ prompt */
+  .term .cmd { color: var(--ink); font-weight: 500; }           /* typed command */
+  .term .str { color: #cdbdfb; }                                /* quoted text */
+  .term .lab { color: var(--ink); font-weight: 500; }           /* Problem: / Result: */
+  .term .lab-p { color: #b9a6f5; font-weight: 500; }            /* Plan: */
+  .term .lab-e { color: #8f86a6; font-weight: 500; }            /* Expect: */
+  .term .lab-a { color: #fff; background: var(--purple); padding: 0 5px; border-radius: 4px; font-weight: 500; }  /* Act: */
+  .term .lab-alt { color: #f0a6b2; font-weight: 500; }          /* Alternatives: */
+  .term .txt { color: var(--ink-2); }
+  .term .em { color: var(--ink); }
+  .term .dim { color: var(--ink-3); }
+  .term .warn { color: #f0a6b2; }
+  .term .sep { color: var(--purple-3); }
+  .term .tool { color: var(--purple-3); }
+  .term .ok { color: #8fe3ad; font-weight: 500; }
+  .term .bad { color: #ff7b8a; font-weight: 500; }
+  .caret { display: inline-block; width: 7px; height: 14px; background: var(--purple-3); vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  section { padding-block: 64px; border-top: 1px solid var(--line); }
+  .eyebrow { font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--purple-3); margin: 0 0 14px; }
+  h2 { font: 600 clamp(26px, 4vw, 34px)/1.15 var(--display); letter-spacing: -0.03em; margin: 0 0 12px; text-wrap: balance; }
+  .intro { color: var(--ink-2); max-width: 60ch; margin: 0 0 36px; }
+
+  .ways { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .ways > div { background: var(--bg); padding: 26px; min-width: 0; }
+  .ways h3 { font: 600 18px/1.3 var(--display); margin: 0 0 6px; }
+  .ways p { color: var(--ink-2); margin: 0 0 14px; font-size: 15px; }
+  .ways code { font: 13px var(--mono); color: var(--ink); background: var(--panel); border: 1px solid var(--line); padding: 6px 10px; border-radius: 8px; display: inline-block; }
+
+  .cmds { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .cmd { display: grid; grid-template-columns: minmax(0, 300px) 1fr; gap: 20px; align-items: center; padding: 16px 22px; border-top: 1px solid var(--line); }
+  .cmd:first-child { border-top: 0; }
+  .cmd code { font: 13px var(--mono); color: var(--ink); background: var(--panel); border: 1px solid var(--line); padding: 6px 10px; border-radius: 8px; justify-self: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .cmd span { color: var(--ink-2); font-size: 15px; }
+  .steps { list-style: none; margin: 0 0 24px; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .steps li { display: flex; gap: 12px; align-items: baseline; color: var(--ink-2); font-size: 15px; min-width: 0; }
+  .steps b { font: 600 13px var(--mono); color: #fff; background: var(--purple); border-radius: 6px; padding: 2px 8px; flex: none; }
+  .skill { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
+  .skillbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); font: 12px var(--mono); color: var(--ink-3); }
+  .skillbar span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn.small { padding: 7px 12px; font-size: 13px; }
+  .skill pre { margin: 0; padding: 16px 18px; font: 12.5px/1.6 var(--mono); color: var(--ink-2); white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow: auto; }
+  .bars { display: flex; flex-direction: column; gap: 14px; max-width: 720px; }
+  .bar { display: grid; grid-template-columns: 170px 1fr 64px; gap: 14px; align-items: center; }
+  .bl { color: var(--ink-2); font-size: 14px; }
+  .track { height: 12px; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .fill { display: block; height: 100%; background: #4a3a6e; border-radius: 6px; }
+  .bar.hi .fill { background: var(--purple-3); }
+  .bar.hi .bl, .bar.hi .bv { color: var(--ink); font-weight: 500; }
+  .bv { font: 500 14px var(--mono); color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 36px; }
+  .stats div { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+  .stats b { font: 600 28px/1 var(--display); letter-spacing: -0.02em; color: var(--ink); }
+  .stats span { color: var(--ink-2); font-size: 14px; }
+  .note { color: var(--ink-3); font-size: 13px; margin: 24px 0 0; max-width: 70ch; }
+  .mods { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; }
+  .mod { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding-block: 20px; border-bottom: 1px solid var(--line); min-width: 0; }
+  .mod h3 { font: 600 16px/1.3 var(--display); margin: 0; }
+  .mod p { grid-column: 1 / -1; color: var(--ink-2); font-size: 14.5px; margin: 0; }
+  .tag { font: 500 11px/1 var(--mono); letter-spacing: 0.04em; padding: 5px 8px; border-radius: 6px; align-self: start; }
+  .tag.free { color: var(--ink-2); border: 1px solid var(--line); }
+  .tag.plus { color: #fff; background: var(--purple); }
+
+  .price { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .plan { border: 1px solid var(--line); border-radius: 14px; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
+  .plan.plus { background: var(--panel); border-color: var(--purple); }
+  .plan h3 { font: 600 18px var(--display); margin: 0; display: flex; align-items: baseline; gap: 10px; }
+  .plan .amt { font: 600 36px/1 var(--display); letter-spacing: -0.03em; }
+  .plan .amt small { font: 400 14px var(--body); color: var(--ink-3); letter-spacing: 0; }
+  .plan ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); font-size: 14.5px; }
+  .plan li::before { content: "+ "; color: var(--purple-3); font-family: var(--mono); }
+  .plan .btn { align-self: flex-start; margin-top: auto; }
+
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .facts h3 { font: 600 15px var(--display); margin: 0 0 6px; }
+  .facts p { color: var(--ink-2); font-size: 14.5px; margin: 0; }
+
+  footer { border-top: 1px solid var(--line); padding-block: 28px 40px; color: var(--ink-3); font-size: 13px; }
+  footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
+
+  #toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--purple-2); color: #fff; font-size: 13.5px; padding: 10px 14px; border-radius: 10px; }
+
+  @media (max-width: 760px) {
+    .hero .grid, .ways, .mods, .price, .facts, .stats, .steps { grid-template-columns: 1fr; }
+    .cmd { grid-template-columns: 1fr; gap: 8px; }
+    .bar { grid-template-columns: 1fr 56px; }
+    .bar .bl { grid-column: 1 / -1; }
+    header.hero { padding-block: 44px 40px; }
+    nav .links { display: none; }
+    .term pre { min-height: 0; }
+  }
+
+  /* language-aware typesetting: Hangul keeps words whole; Japanese and Chinese use strict line breaks; CJK needs looser lines and no tight tracking */
+  :lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+  :lang(ja), :lang(zh-Hans) { line-break: strict; word-break: normal; overflow-wrap: break-word; }
+  :lang(ko) h1, :lang(ja) h1, :lang(zh-Hans) h1 { font-size: clamp(32px, 5.4vw, 52px); line-height: 1.24; letter-spacing: -0.015em; }
+  :lang(ko) h2, :lang(ja) h2, :lang(zh-Hans) h2 { line-height: 1.34; letter-spacing: -0.01em; }
+  :lang(ko) .lede, :lang(ja) .lede, :lang(zh-Hans) .lede { max-width: 26em; }
+  :lang(ko) .intro, :lang(ja) .intro, :lang(zh-Hans) .intro { max-width: 40em; }
+  :lang(ko) body, :lang(ja) body, :lang(zh-Hans) body { line-height: 1.75; }
+  :lang(de) h1, :lang(fr) h1, :lang(es) h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.08; hyphens: auto; }
+  :lang(de) h2, :lang(fr) h2, :lang(es) h2, :lang(de) .mod h3 { hyphens: auto; }
+  .start-steps { grid-template-columns: repeat(2, 1fr); }
+  .words { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 28px; margin: 28px 0 0; }
+  .words div { min-width: 0; }
+  .words dt { font: 600 15px var(--display); color: var(--ink); margin: 0 0 2px; }
+  .words dd { margin: 0; color: var(--ink-2); font-size: 15px; }
+  @media (max-width: 760px) { .start-steps, .words { grid-template-columns: 1fr; } }
+  .sub { font: 600 18px var(--display); margin: 36px 0 12px; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+  .cmp { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 520px; }
+  .cmp th, .cmp td { text-align: left; padding: 11px 16px; border-top: 1px solid var(--line); color: var(--ink-2); }
+  .cmp thead th { border-top: 0; color: var(--ink-3); font-weight: 500; font-size: 13px; }
+  .cmp td:nth-child(n+3), .cmp th:nth-child(n+3) { text-align: right; font-family: var(--mono); }
+  .cmp tr.hi td { color: var(--ink); background: var(--panel); font-weight: 500; }
+  .caveats { margin: 16px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 14.5px; display: grid; gap: 6px; }
+  .caveats b { color: var(--ink); }
+  .matters { margin: 28px 0 0; padding: 20px 22px; border: 1px solid var(--purple); border-radius: 14px; background: var(--panel); }
+  .matters h3 { font: 600 17px var(--display); margin: 0 0 8px; color: var(--ink); }
+  .matters p { margin: 0 0 8px; color: var(--ink-2); }
+  .matters p:last-child { margin: 0; }
+  .tipgrid { grid-template-columns: repeat(2, 1fr); }
+  .tipcode { margin: 10px 0 0; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; font: 12.5px/1.6 var(--mono); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tiplist { display: grid; gap: 10px; margin: 0 0 18px; }
+  .tipitem { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .tipitem p { margin: 0 0 6px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tipmeta { color: var(--ink-3); font-size: 12.5px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .tipmeta button { background: none; border: 0; color: var(--ink-3); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
+  .board-form { display: grid; gap: 10px; max-width: 640px; }
+  .board-form label { font-size: 14px; color: var(--ink-2); }
+  .board-form textarea, .board-form select { width: 100%; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: inherit; }
+  .board-form select { width: auto; }
+  .formrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .formstatus, .muted { color: var(--ink-3); font-size: 14px; }
+  @media (max-width: 760px) { .tipgrid { grid-template-columns: 1fr; } }
+  /* real run */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0 0 22px; }
+  .flowstep { border: 1px solid var(--line); border-radius: 14px; padding: 20px; background: linear-gradient(180deg, var(--panel), transparent); min-width: 0; }
+  .flowstep b { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--purple); color: #fff; font: 600 13px var(--mono); margin-bottom: 10px; }
+  .flowstep h3 { font: 600 17px/1.3 var(--display); margin: 0 0 6px; }
+  .flowstep p { margin: 0; color: var(--ink-2); font-size: 14.5px; }
+  .realgrid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 18px; align-items: start; }
+  .termreal pre { min-height: 0; font-size: 12px; line-height: 1.65; max-height: 860px; overflow: auto; }
+  .tl { display: block; min-height: 1.65em; }
+  .term .typed { color: var(--ink); font-weight: 500; }
+  .shots { display: grid; gap: 14px; }
+  .shots figure { margin: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #131020; }
+  .shots img { display: block; width: 100%; height: auto; }
+  .shots figcaption { font-size: 13px; color: var(--ink-2); padding: 10px 14px; border-top: 1px solid var(--line); }
+  .honest { margin-top: 22px; padding: 20px 22px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); }
+  .honest h3 { font: 600 17px var(--display); margin: 0 0 8px; }
+  .honest p { margin: 0 0 8px; color: var(--ink-2); }
+  .honest p:last-child { margin: 0; }
+  @media (max-width: 760px) { .flow, .realgrid { grid-template-columns: 1fr; } }
+
+  /* motion: sections rise in, the run replays line by line, bars fill, numbers count up */
+  .rv { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+  .rv.in { opacity: 1; transform: none; }
+  .reveal-term .tl { opacity: 0; transform: translateX(-6px); transition: opacity .35s ease, transform .35s ease; }
+  .reveal-term .tl.on { opacity: 1; transform: none; }
+  .fill { transition: width 1.4s cubic-bezier(.2,.7,.2,1); }
+  .flowstep, .shots figure, .mod, .plan, .ways > div { transition: transform .25s ease, border-color .25s ease; }
+  .flowstep:hover, .shots figure:hover, .plan:hover { transform: translateY(-3px); border-color: var(--purple-2); }
+  header.hero { position: relative; overflow: hidden; }
+  header.hero::after { content: ""; position: absolute; inset: -30% -10% auto 40%; height: 520px; background: radial-gradient(closest-side, rgba(91,58,168,.28), transparent 70%); filter: blur(10px); z-index: -1; animation: glow 9s ease-in-out infinite alternate; }
+  @keyframes glow { from { transform: translate(0,0) scale(1); opacity: .8; } to { transform: translate(-40px, 30px) scale(1.12); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .rv, .reveal-term .tl { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .fill { transition: none; }
+    header.hero::after { animation: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+  .getbox{max-width:520px;margin:0 auto;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center}
+  .btn.big{font-size:17px;padding:14px 28px}
+  .getbox .notify{width:100%}
+</style>
+
+<nav><div class="wrap">
+  <a class="logo" href="#top">extra<i>.</i><span class="demo">demo</span></a>
+  <div class="links"><a href="#start" data-i="nav.start">Start</a><a href="#real" data-i="nav.real">Real run</a><a href="#how" data-i="nav.how">How it works</a><a href="#handoff" data-i="nav.handoff">Handoff</a><a href="#team" data-i="nav.team">Teamwork</a><a href="#results" data-i="nav.results">Results</a><a href="#tips" data-i="nav.tips">Tips</a><a href="#modules" data-i="nav.modules">Modules</a><a href="#pricing" data-i="nav.pricing">Pricing</a></div>
+  <select id="lang" aria-label="Language"><option value="en">English</option><option value="ko">한국어</option><option value="ja">日本語</option><option value="zh">简体中文</option><option value="es">Español</option><option value="de">Deutsch</option><option value="fr">Français</option></select>
+  <a class="btn primary" href="#pricing" data-i="nav.get">Get extra</a>
+</div></nav>
+
+<header class="hero" id="top"><div class="wrap grid">
+  <div>
+    <h1 data-i="hero.h1" data-html>Your own AI.<br>Plus <i>extra.</i></h1>
+    <p class="lede" data-i="hero.lede">A local model that runs on your computer, with modules that make it plan and check its work.</p>
+    <div class="cta">
+      <a class="btn primary" href="#pricing" data-i="hero.dl">Download for Mac</a>
+      <a class="btn ghost" href="#modules" data-i="hero.see">See the modules</a>
+    </div>
+    <p class="small" data-i="hero.req">macOS with 16 GB of memory or more. Windows and Linux later.</p>
+  </div>
+  <div class="term" aria-label="Example terminal session">
+    <div class="bar"><span></span><span></span><span></span><b>extra — ~/project</b></div>
+    <pre id="demo"></pre>
+  </div>
+</div></header>
+
+<section id="start"><div class="wrap">
+  <p class="eyebrow" data-i="start.eyebrow">New here? Start here</p>
+  <h2 data-i="start.h2">Start in four steps.</h2>
+  <p class="intro" data-i="start.intro">You need a Mac with 16 GB of memory or more. Everything is typed in Terminal, an app that comes with every Mac.</p>
+  <ol class="steps start-steps">
+    <li><b>1</b><span data-i="start.s1">Install extra. Then open Terminal: press Cmd + Space, type Terminal and press Enter.</span></li>
+    <li><b>2</b><span data-i="start.s2">Type extra and the folder you want to work in, for example: extra ~/Documents/my-app. If the folder does not exist, extra creates it.</span></li>
+    <li><b>3</b><span data-i="start.s3">In the box at the bottom, write what you want in your own words, for example: make a simple to-do web page. extra writes the files, runs them and fixes errors by itself.</span></li>
+    <li><b>4</b><span data-i="start.s4">Before it writes a file or runs a command, extra asks. Type y for yes, a for always, n for no. Type /help any time to see every command or ask how something works.</span></li>
+  </ol>
+</div></section>
+
+<section id="real"><div class="wrap">
+  <p class="eyebrow" data-i="real.eyebrow">A real run</p>
+  <h2 data-i="real.h2">Claude stopped halfway. extra finished it.</h2>
+  <p class="intro" data-i="real.intro">This is one real run, shown as it happened. The window below is extra's own output, the pictures are the page it finished, and every number was measured.</p>
+  <div class="flow">
+    <div class="flowstep"><b>1</b><h3 data-i="real.s1h">What Claude left</h3><p data-i="real.s1p">A currency converter half done: the page, the styles and the conversion work. Getting live exchange rates was still a stub with fixed numbers. Claude left a handoff note (what is done, what is next) and a check script that defines done.</p></div>
+    <div class="flowstep"><b>2</b><h3 data-i="real.s2h">What extra did</h3><p data-i="real.s2p">It read the note, tried a free rates API with curl, wrote getRates(), and ran the check. The check failed (no warning when offline), so it read why, fixed one function and ran it again until it passed. Then it updated the note for Claude. 8 steps, 9 minutes 53 seconds, no help.</p></div>
+    <div class="flowstep"><b>3</b><h3 data-i="real.s3h">How it was checked</h3><p data-i="real.s3p">The check opens the page in a real browser (headless Chrome) three times: online, offline after one visit, and offline on a first visit. It looks at the status line, its colour, the saved time and the converted amount, and prints what it saw.</p></div>
+  </div>
+  <div class="realgrid">
+    <div class="term termreal reveal-term" aria-label="extra's output in this run">
+      <div class="bar"><span></span><span></span><span></span><b>extra — ~/Documents/exchange-calc</b></div>
+      <pre><span class="tl"><span class="pr">$ </span><span class="typed">extra continue</span></span><span class="tl"><span class="dim"> Handoff notes Claude left</span></span><span class="tl"><span class="em"> a  exchange-calc</span><span class="dim">   ~/Documents/exchange-calc   </span><span class="tool">note</span></span><span class="tl"><span class="tool">↪ </span><span class="dim">continuing from the handoff note in ~/Documents/exchange-calc</span></span><span class="tl"><span class="tool">◆  1 </span><span class="lab-p">Plan: </span><span class="txt">Test Open ER API first with curl to confirm it returns KRW, JPY, EUR.</span></span><span class="tl"><span class="dim">      </span><span class="lab-a">Act</span><span class="txt"> read_file app.js</span></span><span class="tl"><span class="tool">→ read_file </span><span class="dim">path=&#x27;app.js&#x27;</span><span class="ok">   ✓ done</span></span><span class="tl"><span class="ok">✓  2 verified </span><span class="lab-p">Plan: </span><span class="txt">Test the API with curl.</span></span><span class="tl"><span class="tool">→ run_command </span><span class="dim">curl -s https://open.er-api.com/v6/latest/USD</span></span><span class="tl"><span class="dim">  │ {&quot;result&quot;:&quot;success&quot;,&quot;provider&quot;:&quot;https://www.exchangerate-api.com&quot;, …}</span></span><span class="tl"><span class="dim">  └ </span><span class="ok">exit 0</span></span><span class="tl"><span class="ok">✓  3 verified </span><span class="lab-p">Plan: </span><span class="txt">Implement getRates() with fetch; save the rates and their time in localStorage.</span></span><span class="tl"><span class="tool">→ write_file </span><span class="dim">path=&#x27;app.js&#x27;</span><span class="ok">   ✓ app.js · 127 lines +81 −5</span></span><span class="tl"><span class="ok">✓  4 verified </span><span class="lab-p">Plan: </span><span class="txt">Run python3 check.py.</span></span><span class="tl"><span class="tool">→ run_command </span><span class="dim">python3 check.py</span></span><span class="tl"><span class="dim">  │ online:  status=&#x27;Rates updated: …&#x27; class=[&#x27;status&#x27;] result=&#x27;₩1,000 = $0.75&#x27;</span></span><span class="tl"><span class="dim">  │ offline: status=&#x27;Rates updated: …&#x27; class=[&#x27;status&#x27;]</span></span><span class="tl"><span class="bad">  │ FAIL: offline: #status should warn (class &quot;warn&quot;) when it uses saved rates</span></span><span class="tl"><span class="dim">  └ </span><span class="bad">exit 1   ✗ error</span></span><span class="tl"><span class="ok">✓  5 verified </span><span class="lab-p">Plan: </span><span class="txt">Make updateStatus() warn when the rates come from the cache.</span></span><span class="tl"><span class="tool">→ write_file </span><span class="dim">path=&#x27;app.js&#x27;</span><span class="ok">   ✓ app.js · 130 lines +4 −1</span></span><span class="tl"><span class="ok">✓  6 verified </span><span class="lab-p">Plan: </span><span class="txt">Run python3 check.py again.</span></span><span class="tl"><span class="tool">→ run_command </span><span class="dim">python3 check.py</span></span><span class="tl"><span class="dim">  │ online:  status=&#x27;Rates updated: …&#x27; class=[&#x27;status&#x27;] result=&#x27;₩1,000 = $0.75&#x27;</span></span><span class="tl"><span class="dim">  │ offline: status=&#x27;Using cached rates (last updated: …)&#x27; class=[&#x27;status&#x27;, &#x27;warn&#x27;]</span></span><span class="tl"><span class="dim">  │ first visit offline: status=&#x27;Rates could not be loaded&#x27; class=[&#x27;status&#x27;, &#x27;warn&#x27;] result=&#x27;—&#x27;</span></span><span class="tl"><span class="ok">  │ PASS</span></span><span class="tl"><span class="dim">  └ </span><span class="ok">exit 0   ✓ done</span></span><span class="tl"><span class="ok">✓  7 verified </span><span class="lab">Result: </span><span class="txt">The check passed.</span></span><span class="tl"><span class="tool">→ write_file </span><span class="dim">path=&#x27;.extra/handoff.md&#x27;</span><span class="ok">   ✓ updated</span></span><span class="tl"><span class="ok">✓  8 verified </span><span class="lab">Check: </span><span class="txt">The task is complete and verified.</span></span><span class="tl"><span class="dim">  (noted what extra did at the end of .extra/handoff.md)</span></span><span class="tl"><span class="ok">Finished in 9 min 53 s.</span></span></pre>
+    </div>
+    <div class="shots">
+      <figure><img src="assets/result-online.png" alt="The finished converter online: 50,000 won is 37.42 dollars, with the time the rates were updated" width="420" loading="lazy"><figcaption data-i="real.cap1">Online — live rates and the time they were fetched.</figcaption></figure>
+      <figure><img src="assets/result-offline.png" alt="The same page offline: it still converts and warns in orange that it is using rates saved earlier, with their time" width="420" loading="lazy"><figcaption data-i="real.cap2">Offline — it keeps working with the saved rates and says so in orange.</figcaption></figure>
+    </div>
+  </div>
+  <div class="honest">
+    <h3 data-i="real.hh">How often it works</h3>
+    <p data-i="real.hp1">We ran this same task 18 times from the same starting point. 12 runs passed. Each failure had a different cause, and each one is now caught by the program: forgetting the task in long runs, not finding where an error came from, repeating the same command, putting the tool name inside a command, editing the check itself, and stopping while the check still failed. After the last fix, the last 3 runs in a row passed.</p>
+    <p data-i="real.hp2">It is still a small model. Sometimes it cannot find a bug. When that happens, extra does not pretend: it says it stopped with the check still failing and writes that in the note for Claude.</p>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <p class="eyebrow" data-i="how.eyebrow">Two ways to use it</p>
+  <h2 data-i="how.h2">Talk to it, or hand it the job.</h2>
+  <p class="intro" data-i="how.intro">The model lives on your machine. Open the chat window for questions, or start it in your terminal and let it work on your files the way a coding agent does.</p>
+  <div class="cmds">
+    <div class="cmd"><code>extra continue</code><span data-i="cmd0">Pick up a task Claude started: lists the handoff notes and sessions, Enter takes the newest</span></div>
+    <div class="cmd"><code>extra "finish the login feature"</code><span data-i="cmd2">Start a new long task on the whole project</span></div>
+    <div class="cmd"><code>extra</code><span data-i="cmd1">Open extra here; from your home folder it lists recent folders to pick</span></div>
+    <div class="cmd"><code>/skills · /skill design</code><span data-i="cmd6">See the skills, or use one for your next request</span></div>
+    <div class="cmd"><code>/new · /exit · Ctrl-C</code><span data-i="cmd4">New session, quit, stop the current step</span></div>
+  </div>
+</div></section>
+
+<section id="handoff"><div class="wrap">
+  <p class="eyebrow" data-i="hand.eyebrow">Works with Claude Code</p>
+  <h2 data-i="hand.h2">Claude leaves a note. extra picks it up.</h2>
+  <p class="intro" data-i="hand.intro">Add the extra-handoff skill to Claude Code. While Claude works, it keeps .extra/handoff.md up to date: the goal, what is done, what is in progress and what is next. When Claude hits its limit, extra continue starts from that note.</p>
+  <ol class="steps">
+    <li><b>1</b><span data-i="hand.s1">Save the skill below as ~/.claude/skills/extra-handoff/SKILL.md</span></li>
+    <li><b>2</b><span data-i="hand.s2">Work with Claude as usual. The note stays current as it works.</span></li>
+    <li><b>3</b><span data-i="hand.s3">When the limit hits, run extra continue in the same folder.</span></li>
+  </ol>
+  <div class="skill">
+    <div class="skillbar"><span>~/.claude/skills/extra-handoff/SKILL.md</span><button class="btn ghost small" type="button" id="copyskill" data-i="hand.copy">Copy skill</button></div>
+    <pre id="skilltext">---
+name: extra-handoff
+description: Keep a short handoff note in .extra/handoff.md while working on a multi-step coding task, so the extra terminal agent can continue the same task if you hit your usage limit. Use on any task that takes more than a few steps.
+---
+
+# Leave a handoff note for extra
+
+While you work on a task that takes more than a few steps, keep `.extra/handoff.md` in the project root up to date.
+If you hit a usage limit, the user runs `extra continue` in the same folder, and extra reads this note first.
+
+Update the note:
+- when you start the task (the goal and your plan),
+- after each meaningful step (a file changed, a test run, a decision made),
+- right before you stop for any reason.
+
+Keep it short and current. Use this format:
+
+```markdown
+# Handoff
+## Goal
+&lt;what the user wants, in one or two sentences&gt;
+## Done
+- &lt;finished steps, with the files they touched&gt;
+## In progress
+- &lt;what you were doing, and the exact next command or edit&gt;
+## Next
+1. &lt;remaining steps, in order&gt;
+## How to test
+&lt;the command that shows the task works&gt;
+## Notes
+- &lt;decisions, gotchas, things not to change&gt;
+```
+
+Rules:
+- Write facts that a reader with no context can act on. Do not use names you made up during the work.
+- Never put secrets (API keys, passwords, tokens) in the note.
+- Suggest adding `.extra/` to `.gitignore` unless the user wants the note in the repository.
+</pre>
+  </div>
+</div></section>
+
+<section id="team"><div class="wrap">
+  <p class="eyebrow" data-i="team.eyebrow">Teamwork with Claude</p>
+  <h2 data-i="team.h2">Claude never waits. extra takes the slow part.</h2>
+  <p class="intro" data-i="team.intro">When Claude has a lot to do, it hands a self-contained problem to extra in the background and keeps working. extra solves it in a private copy of your project: it tries, runs the tests, reads why they fail and tries another way until they pass. Claude reviews the result, then uses it or sends it back with the reason. Your Claude usage lasts longer.</p>
+  <div class="cmds">
+    <div class="cmd"><code>extra run "task" --test "cmd"</code><span data-i="team.c1">Claude hands over one problem with a command that checks it</span></div>
+    <div class="cmd"><code>extra show ID</code><span data-i="team.c2">Claude reviews what extra changed and how it was tested</span></div>
+    <div class="cmd"><code>extra apply ID</code><span data-i="team.c3">Use it. Changes merge with Claude's own edits; overlaps are never forced</span></div>
+    <div class="cmd"><code>extra run --job ID --feedback "why"</code><span data-i="team.c4">Or send it back with what is wrong</span></div>
+  </div>
+  <div class="skill">
+    <div class="skillbar"><span>~/.claude/skills/extra-delegate/SKILL.md</span><button class="btn ghost small" type="button" id="copyskill2" data-i="hand.copy">Copy skill</button></div>
+    <pre id="skilltext2">---
+name: extra-delegate
+description: Hand self-contained problems to the local extra agent in the background while you keep working, then review its patch and apply it or send it back with reasons. Use when a task has several independent pieces and at least one of them can be checked by a command (tests, a script, a build), so extra's slow but thorough try-run-fix loop runs in parallel with you and saves your usage.
+---
+
+# Work together with extra
+
+extra is a small local model that solves one problem slowly but thoroughly: it plans, predicts, runs the real code, reads
+why it failed, and tries other ways until a check passes. It costs you no tokens while it works. You are faster and
+better at judgment. Split the work so that **you never wait for extra**.
+
+## When to delegate
+Delegate a piece only when all of these hold:
+- It is self-contained: it does not touch the files you are about to edit next.
+- It has a check: a command that exits 0 when the piece is done (a test file, a script, `npm run build`, ...).
+  If no test exists, write a small one first (that is cheap for you) and include it in the job.
+- You can describe it in a few sentences: inputs, outputs, files, constraints.
+
+Good pieces: making failing tests pass, a well-specified function or module, a bug with a reproducing test, porting
+code under an existing test suite, edge cases, small tools. Keep design, cross-cutting changes and final integration yourself.
+
+## How to delegate
+Run this with the Bash tool and `run_in_background: true` from the project root, then immediately continue with your own work:
+
+```bash
+extra run "&lt;task: what to build or fix, the interface, constraints&gt;" --test "&lt;check command&gt;" --files "&lt;a.py,b.py&gt;" --minutes 30
+```
+
+Optional: `--prompt "&lt;extra instructions for this job&gt;"` (style, libraries to use or avoid).
+extra works in a private copy of the project, so it never collides with your edits. Only one job runs at a time on the
+user's Mac; further jobs queue, so do not start more than two.
+
+## While it runs
+Do not poll and do not sleep. Keep working on other pieces. You will get a notification when the background command ends.
+To peek at progress without waiting: `extra show &lt;id&gt;` (shows the steps it tried so far).
+If you finish everything else first, do not wait idle: prepare the next piece, write tests, or review your own work.
+If a job runs past its time and you need the piece now, take it over yourself; `extra show &lt;id&gt;` lists what extra
+already tried and why it failed, so you do not repeat it.
+
+## When it finishes
+The notification output is extra's result (status, test result, changed files, summary). Then:
+1. Review: `extra show &lt;id&gt;` prints the diff. Check it like a code review: correctness, scope (only what was asked),
+   style, no unrelated changes. Run the check yourself if it matters.
+2. Use it: `extra apply &lt;id&gt;`. It copies the changes into the project and merges with your edits to the same files;
+   if they overlap, it changes nothing and tells you which files to merge by hand.
+3. Or send it back, in the background again, with the concrete reason:
+   `extra run --job &lt;id&gt; --feedback "&lt;what is wrong, why, and what you expect instead&gt;"`
+   Good feedback names the failing case or the line, not just "wrong". After two send-backs, take it over yourself.
+
+## Keep the user informed
+Mention in one line when you hand a piece to extra and when you apply or send back its result.
+If you also keep `.extra/handoff.md` (extra-handoff skill), list running job ids there, so `extra continue` knows about them.
+</pre>
+  </div>
+</div></section>
+
+<section id="results"><div class="wrap">
+  <p class="eyebrow" data-i="res.eyebrow">Measured</p>
+  <h2 data-i="res.h2">More tries with real errors. More tests passed.</h2>
+  <p class="intro" data-i="res.intro">We gave the 8B model extra runs on (Ministral 3 8B) 292 coding tasks from MBPP+ and HumanEval+. After each attempt, extra ran its code against one visible test, read the real error and fixed the code — up to 10 times. Every final answer was then scored against hidden tests the model never saw.</p>
+  <div class="bars" role="img" aria-label="Hidden tests passed by number of tries: 1 try 68.2%, 2 tries 76.4%, 3 tries 79.8%, 5 tries 82.9%, 10 tries 83.6%">
+    <div class="bar"><span class="bl" data-i="r.t1">1 try</span><span class="track"><span class="fill" style="width:68.2%"></span></span><span class="bv">68.2%</span></div>
+    <div class="bar"><span class="bl" data-i="r.t2">up to 2 tries</span><span class="track"><span class="fill" style="width:76.4%"></span></span><span class="bv">76.4%</span></div>
+    <div class="bar"><span class="bl" data-i="r.t3">up to 3 tries</span><span class="track"><span class="fill" style="width:79.8%"></span></span><span class="bv">79.8%</span></div>
+    <div class="bar"><span class="bl" data-i="r.t5">up to 5 tries</span><span class="track"><span class="fill" style="width:82.9%"></span></span><span class="bv">82.9%</span></div>
+    <div class="bar hi"><span class="bl" data-i="r.t10">up to 10 tries</span><span class="track"><span class="fill" style="width:83.6%"></span></span><span class="bv">83.6%</span></div>
+  </div>
+  <div class="stats">
+    <div><b>+15.4</b><span data-i="st1">points from the first try to 10 tries, with the same model</span></div>
+    <div><b>1.55</b><span data-i="st2">tries per task on average — most tasks finish in one or two</span></div>
+    <div><b>46</b><span data-i="st3">tasks passed the visible test but failed hidden ones, so there was no error left to fix</span></div>
+  </div>
+  <h3 class="sub" data-i="cmp.h">Next to large models</h3>
+  <div class="tablewrap"><table class="cmp">
+    <thead><tr><th data-i="cmp.model">Model</th><th data-i="cmp.how">How it was scored</th><th>HumanEval+</th><th>MBPP+</th></tr></thead>
+    <tbody>
+      <tr class="hi"><td>extra (Ministral 3 8B)</td><td data-i="cmp.ours10">fixed its code after real errors, up to 10 times</td><td>89.0</td><td>76.6</td></tr>
+      <tr><td>extra (Ministral 3 8B)</td><td data-i="cmp.ours1">first try only</td><td colspan="2" data-i="cmp.ours1v">68.2 (both together)</td></tr>
+      <tr><td>GPT-4o (Aug 2024)</td><td data-i="cmp.single">one try, no feedback</td><td>87.2</td><td>72.2</td></tr>
+      <tr><td>Claude 3.5 Sonnet (Jun 2024)</td><td data-i="cmp.single">one try, no feedback</td><td>81.7</td><td>74.3</td></tr>
+      <tr><td>Mistral 7B Instruct v0.2</td><td data-i="cmp.single">one try, no feedback</td><td>36.0</td><td>37.0</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="caveats">
+    <li data-i="cv1" data-html><b>Not the same test condition.</b> extra received the error and corrected its code up to 10 times. The other models' numbers come from the public EvalPlus leaderboard and are single tries with no feedback.</li>
+    <li data-i="cv2">The large models listed are 2024 versions. Newer large models score higher.</li>
+    <li data-i="cv3">Our MBPP+ set has 128 tasks; the leaderboard uses 399. Scores from one run can move a few points between runs.</li>
+  </ul>
+  <div class="matters">
+    <h3 data-i="mt.h">What matters here</h3>
+    <p data-i="mt.p1">On its own, the small model gets 68.2% on the first try, below the large models. Letting it run its own code, read the real error and try again takes the same model to 83.6%. Nothing about the model changed; only the way it works did.</p>
+    <p data-i="mt.p2">Most of the gain comes in the first three tries. After five tries it barely moves, because extra can only fix what an error shows it. Good tests make extra better.</p>
+    <p data-i="mt.p3">extra trades time for accuracy. It is slower than a large model, but it runs on your computer with no usage limit, so it can keep trying while your main assistant is out of quota.</p>
+  </div>
+  <p class="note" data-i="res.note">Measured in November 2026 on Ministral 3 8B Instruct with extra's method. Hidden tests from EvalPlus. Large-model scores from the EvalPlus leaderboard (evalplus.github.io).</p>
+</div></section>
+
+<section id="modules"><div class="wrap">
+  <p class="eyebrow" data-i="mods.eyebrow">Modules</p>
+  <h2 data-i="mods.h2">Small add-ons that change how it works.</h2>
+  <p class="intro" data-i="mods.intro">Each module plugs into the same local model. Turn them on one at a time and keep the ones that help.</p>
+  <div class="mods">
+    <div class="mod"><h3>Handoff</h3><span class="tag free">FREE</span><p data-i="m9">Reads where your last assistant stopped in this folder and continues the same task without starting over.</p></div>
+    <div class="mod"><h3>Self-Install</h3><span class="tag free">FREE</span><p data-i="m10">Installs the packages and downloads the files it needs, after you approve each one with y/n.</p></div>
+    <div class="mod"><h3>Plan · Expect · Act</h3><span class="tag free">FREE</span><p data-i="m1">Before each step it writes what it will do and what it expects to happen, then does exactly that.</p></div>
+    <div class="mod"><h3>Run &amp; Retry</h3><span class="tag plus">PLUS</span><p data-i="m2">Runs the code it wrote, reads the actual error or test result, and tries again with that in hand.</p></div>
+    <div class="mod"><h3>Another Way</h3><span class="tag plus">PLUS</span><p data-i="m3">When it gets blocked, it lists other approaches and tries the best one before it tells you something can't be done.</p></div>
+    <div class="mod"><h3>Honesty Check</h3><span class="tag free">FREE</span><p data-i="m4">Catches answers that claim work it didn't do, like a file it never saved, and makes it finish the job.</p></div>
+    <div class="mod"><h3>Skills</h3><span class="tag free">FREE</span><p data-i="m11">Built-in expert instructions for design, browser testing, debugging and verifying before saying done — from Anthropic's and the superpowers open-source skills. extra picks the right ones for your request.</p></div>
+    <div class="mod"><h3>Safe Edits</h3><span class="tag free">FREE</span><p data-i="m7">Shows a colored diff and asks before it writes a file or runs a command. It never writes outside your project.</p></div>
+  </div>
+</div></section>
+
+<section id="pricing"><div class="wrap">
+  <p class="eyebrow" data-i="pricing.eyebrow">Get extra</p>
+  <h2 data-i="pricing.h2">Free while extra is in beta.</h2>
+  <p class="intro" data-i="pricing.intro">extra is free while it's in beta. Every feature is included. Some things may still break — tell us and we fix them. Leave your email and we'll let you know when there's a new version.</p>
+  <div class="getbox">
+    <a class="btn primary big" href="https://github.com/len1x111120-prog/extra#install" target="_blank" rel="noopener" data-i="btn.download">Download for Mac</a>
+    <a class="btn ghost" href="https://github.com/len1x111120-prog/extra" target="_blank" rel="noopener" data-i="nf.watch">★ Watch the repo on GitHub for releases</a>
+    <form id="notifyform" class="notify" action="FORMSPREE_ENDPOINT" method="POST" hidden>
+      <label for="notifyemail" data-i="nf.label">Or get an email when the next version is ready</label>
+      <div class="notifyrow">
+        <input id="notifyemail" name="email" type="email" autocomplete="email" maxlength="200" data-ph="nf.ph" placeholder="you@email.com" required>
+        <button class="btn primary" type="submit" data-i="nf.btn">Notify me</button>
+      </div>
+    </form>
+  </div>
+</div></section>
+
+<section><div class="wrap facts">
+  <div><h3 data-i="fa.h1">Runs on your computer</h3><p data-i="fa.p1">The model answers from your own machine. Your chats are stored there too.</p></div>
+  <div><h3 data-i="fa.h2">No usage limit</h3><p data-i="fa.p2">It runs on your own computer, so there is no quota to run out of.</p></div>
+  <div><h3 data-i="fa.h3">Open model inside</h3><p data-i="fa.p3">Built on an Apache 2.0 licensed 8B model, so what runs on your machine is yours.</p></div>
+</div></section>
+
+<section id="tips"><div class="wrap">
+  <p class="eyebrow" data-i="tips.eyebrow">Tips</p>
+  <h2 data-i="tips.h2">Tips for running extra well.</h2>
+  <div class="ways tipgrid">
+    <div><h3 data-i="tip1.h">Turn on two Ollama settings</h3><p data-i="tip1.p">In Terminal, run the two lines below, then quit Ollama from the menu bar and open it again. On our Mac, writing got about 32% faster (10.3 → 13.6 tokens a second) and the model used about 1 GB less memory. Answers stay the same.</p><pre class="tipcode">launchctl setenv OLLAMA_FLASH_ATTENTION 1
+launchctl setenv OLLAMA_KV_CACHE_TYPE q8_0</pre></div>
+    <div><h3 data-i="tip2.h">Need it faster? Think less</h3><p data-i="tip2.p">Type /set effort low and /set verify off. extra plans less and stops checking each result, so it is faster but makes more mistakes.</p></div>
+    <div><h3 data-i="tip3.h">Give it a check command</h3><p data-i="tip3.p">extra fixes what an error shows it. A test or a small script that fails until the job is done makes it much better.</p></div>
+    <div><h3 data-i="tip4.h">Let Claude leave a note</h3><p data-i="tip4.p">With the extra-handoff skill, Claude keeps a note of the task. Then run extra continue anywhere and press Enter to pick up the newest note.</p></div>
+  </div>
+
+</div></section>
+
+<section id="feedback"><div class="wrap">
+  <p class="eyebrow" data-i="fb.eyebrow">Feedback</p>
+  <h2 data-i="fb.h2">Tell us what broke or what you want.</h2>
+  <p class="intro" data-i="fb.intro">extra is in beta, so every report helps. Bugs and ideas go to the project's issue tracker on GitHub.</p>
+  <div class="getbox">
+    <a class="btn primary big" href="https://github.com/len1x111120-prog/extra/issues/new" target="_blank" rel="noopener" data-i="fb.gh">Open an issue on GitHub</a>
+    <p class="muted" data-i="fb.ghnote">You'll need a free GitHub account. Say what happened and what you expected.</p>
+  </div>
+</div></section>
+
+<section id="credits"><div class="wrap credits">
+  <p class="eyebrow" data-i="cr.eyebrow">Who made extra</p>
+  <p class="intro" data-i="cr.text">Made by Jeon Seol, built together with Claude, Anthropic's AI, in Claude Code.</p>
+</div></section>
+
+<footer><div class="wrap"><span>extra<i style="font-style:normal;color:var(--purple-3)">.</i> — <span data-i="foot">local AI with modules</span></span><span>© 2026 Jeon Seol</span></div></footer>
+<div id="toast" hidden></div>
+
+<script>
+  // terminal demo: types out one real-shaped session (Plan / Expect / Act, a failed run, a retry)
+  const lines = [   // each line: [class, text] pieces
+    [['pr', '$ '], ['cmd', 'extra continue']],
+    [['tool', '↪ '], ['dim', 'picking up your last task: '], ['em', 'make slugify() pass the tests']],
+    [['lab', 'Problem: '], ['txt', 'slugify() fails '], ['em', 'test_unicode'], ['txt', '.']],
+    [['lab-p', 'Plan: '], ['em', 'read the test, fix the regex, run the tests.']],
+    [['lab-e', 'Expect: '], ['txt', 'if I keep only [a-z0-9], "Crème Brûlée" becomes "crme-brle" '], ['warn', 'and the test still fails.']],
+    [['lab-a', 'Act'], ['em', ' normalize accents first, then filter.']],
+    [['tool', '→ run '], ['dim', 'pytest -q']],
+    [['bad', '✗ 1 failed '], ['dim', 'expected "creme-brulee", got "creme-brulee-"']],
+    [['lab', 'Result: '], ['txt', 'accents fixed, trailing dash left. '], ['warn', 'Not what I expected.']],
+    [['lab-alt', 'Alternatives: '], ['txt', 'strip dashes at the end '], ['sep', '·'], ['txt', ' collapse repeats '], ['sep', '·'], ['txt', ' both']],
+    [['lab-a', 'Act'], ['em', ' collapse repeats, then strip the ends.']],
+    [['tool', '→ run '], ['dim', 'pytest -q']],
+    [['ok', '✓ 12 passed']],
+  ];
+  const pre = document.getElementById('demo');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function addLine(parts, upto) {   // upto: how many characters of this line to show (typing)
+    let left = upto == null ? Infinity : upto;
+    for (const [c, t] of parts) {
+      if (left <= 0) break;
+      const sp = document.createElement('span'); sp.className = c; sp.textContent = t.slice(0, left); pre.appendChild(sp);
+      left -= t.length;
+    }
+  }
+  function render(full, partial) {
+    pre.innerHTML = '';
+    lines.slice(0, full).forEach((l) => { addLine(l); pre.appendChild(document.createTextNode('\n')); });
+    if (partial) addLine(lines[full], partial);
+    const k = document.createElement('span'); k.className = 'caret'; pre.appendChild(k);
+  }
+  const lenOf = (l) => l.reduce((n, [, t]) => n + t.length, 0);
+  render(lines.length);                         // the full session is visible at rest
+  if (!reduce) {
+    let i = 0, j = 0;
+    setTimeout(function step() {                // then it replays once, typed
+      if (i >= lines.length) { render(lines.length); return; }
+      j += i === 0 ? 2 : 3;
+      if (j >= lenOf(lines[i])) { i++; j = 0; render(i); setTimeout(step, lines[i - 1][0][0] === 'tool' ? 500 : 70); }
+      else { render(i, j); setTimeout(step, 18); }
+    }, 1400);
+  }
+  // languages: English, 한국어, 日本語, 简体中文, Español, Deutsch, Français
+  const T = {
+    "nav.start": ["Start", "시작하기", "はじめに", "开始", "Empezar", "Loslegen", "Démarrer"],
+    "start.eyebrow": ["New here? Start here", "처음이십니까? 여기서 시작하십시오", "初めての方はこちら", "第一次用？从这里开始", "¿Primera vez? Empieza aquí", "Neu hier? Hier anfangen", "Nouveau ? Commencez ici"],
+    "start.h2": ["Start in four steps.", "네 단계로 시작합니다.", "4つのステップで始めます。", "四步开始。", "Empieza en cuatro pasos.", "In vier Schritten loslegen.", "Démarrez en quatre étapes."],
+    "start.intro": ["You need a Mac with 16 GB of memory or more. Everything is typed in Terminal, an app that comes with every Mac.", "메모리 16GB 이상의 Mac이 필요합니다. 모든 입력은 Mac에 기본으로 들어 있는 터미널 앱에서 합니다.", "メモリ16GB以上のMacが必要です。入力はすべて、Macに標準で入っているターミナルアプリで行います。", "需要内存 16 GB 以上的 Mac。所有操作都在 Mac 自带的“终端”应用里输入。", "Necesitas un Mac con 16 GB de memoria o más. Todo se escribe en Terminal, una app que viene con todos los Mac.", "Du brauchst einen Mac mit mindestens 16 GB Arbeitsspeicher. Alles wird im Terminal eingegeben, einer App, die auf jedem Mac vorinstalliert ist.", "Il vous faut un Mac avec 16 Go de mémoire ou plus. Tout se tape dans Terminal, une app fournie avec chaque Mac."],
+    "start.s1": ["Install extra. Then open Terminal: press Cmd + Space, type Terminal and press Enter.", "extra를 설치합니다. 그다음 터미널을 엽니다: Cmd + Space를 누르고 '터미널'을 입력한 뒤 Enter를 누르십시오.", "extraをインストールします。次にターミナルを開きます：Cmd + Spaceを押し、「ターミナル」と入力してEnterを押してください。", "安装 extra。然后打开终端：按 Cmd + 空格，输入“终端”，再按回车。", "Instala extra. Luego abre Terminal: pulsa Cmd + Espacio, escribe Terminal y pulsa Intro.", "Installiere extra. Öffne dann das Terminal: Cmd + Leertaste drücken, Terminal eingeben und Enter drücken.", "Installez extra. Ouvrez ensuite Terminal : appuyez sur Cmd + Espace, tapez Terminal puis Entrée."],
+    "start.s2": ["Type extra and the folder you want to work in, for example: extra ~/Documents/my-app. If the folder does not exist, extra creates it.", "extra와 작업할 폴더를 입력합니다. 예: extra ~/Documents/my-app. 폴더가 없으면 extra가 만듭니다.", "extraと作業するフォルダを入力します。例：extra ~/Documents/my-app。フォルダがなければextraが作ります。", "输入 extra 和要工作的文件夹，例如：extra ~/Documents/my-app。文件夹不存在时，extra 会自动创建。", "Escribe extra y la carpeta donde quieres trabajar, por ejemplo: extra ~/Documents/my-app. Si la carpeta no existe, extra la crea.", "Gib extra und den Ordner ein, in dem du arbeiten willst, zum Beispiel: extra ~/Documents/my-app. Gibt es den Ordner nicht, legt extra ihn an.", "Tapez extra suivi du dossier de travail, par exemple : extra ~/Documents/my-app. Si le dossier n'existe pas, extra le crée."],
+    "start.s3": ["In the box at the bottom, write what you want in your own words, for example: make a simple to-do web page. extra writes the files, runs them and fixes errors by itself.", "아래 입력칸에 원하는 것을 평소 말로 적습니다. 예: 간단한 할 일 웹페이지 만들어 줘. extra가 파일을 쓰고, 실행해 보고, 오류도 스스로 고칩니다.", "下の入力欄に、やりたいことを普段の言葉で書きます。例：簡単なToDoのWebページを作って。extraがファイルを書き、実行し、エラーも自分で直します。", "在下方输入框里用平常的话写下你想要的，例如：做一个简单的待办事项网页。extra 会自己写文件、运行，并修复错误。", "En el cuadro de abajo, escribe lo que quieres con tus palabras, por ejemplo: haz una página web sencilla de tareas. extra escribe los archivos, los ejecuta y corrige los errores por sí mismo.", "Schreib im Feld unten in eigenen Worten, was du willst, zum Beispiel: Mach eine einfache To-do-Webseite. extra schreibt die Dateien, führt sie aus und behebt Fehler selbst.", "Dans la zone du bas, écrivez ce que vous voulez avec vos mots, par exemple : fais une page web simple de tâches. extra écrit les fichiers, les exécute et corrige les erreurs tout seul."],
+    "start.s4": ["Before it writes a file or runs a command, extra asks. Type y for yes, a for always, n for no. Type /help any time to see every command or ask how something works.", "파일을 쓰거나 명령을 실행하기 전에 extra가 여쭙니다. y는 예, a는 항상 허락, n은 아니요입니다. 언제든 /help를 입력하면 모든 명령을 보거나 사용법을 물어볼 수 있습니다.", "ファイルを書いたりコマンドを実行する前に、extraが確認します。yははい、aは常に許可、nはいいえです。いつでも/helpと入力すると、すべてのコマンドを見たり使い方を聞いたりできます。", "在写文件或运行命令之前，extra 会先询问。输入 y 表示同意，a 表示一直允许，n 表示不同意。随时输入 /help 可以查看全部命令或询问用法。", "Antes de escribir un archivo o ejecutar un comando, extra pregunta. Escribe y para sí, a para siempre, n para no. Escribe /help en cualquier momento para ver todos los comandos o preguntar cómo funciona algo.", "Bevor extra eine Datei schreibt oder einen Befehl ausführt, fragt es nach. Tippe y für ja, a für immer, n für nein. Mit /help siehst du jederzeit alle Befehle oder fragst, wie etwas funktioniert.", "Avant d'écrire un fichier ou de lancer une commande, extra demande. Tapez y pour oui, a pour toujours, n pour non. Tapez /help à tout moment pour voir toutes les commandes ou demander comment faire."],
+    "plan.now": ["Now", "지금", "現在", "现在", "Ahora", "Jetzt", "Maintenant"],
+    "plan.demo": ["Demo", "데모", "デモ", "演示版", "Demo", "Demo", "Démo"],
+    "plan.later": ["After the demo", "데모 이후", "デモ終了後", "演示结束后", "Después de la demo", "Nach der Demo", "Après la démo"],
+    "plan.full": ["Full version", "정식 버전", "正式版", "正式版", "Versión completa", "Vollversion", "Version complète"],
+    "d1": ["Every module included", "모든 모듈 포함", "すべてのモジュールを含む", "包含全部模块", "Todos los módulos incluidos", "Alle Module enthalten", "Tous les modules inclus"],
+    "d2": ["Some things may still break; tell us and we fix them", "아직 오류가 날 수 있습니다. 알려 주시면 고칩니다", "まだ不具合が出ることがあります。教えていただければ直します", "可能还会出错，告诉我们，我们来修", "Algunas cosas aún pueden fallar; avísanos y lo arreglamos", "Manches kann noch haken; sag es uns, wir beheben es", "Certaines choses peuvent encore casser ; dites-le-nous et nous corrigeons"],
+    "fu1": ["Everything in the demo", "데모의 모든 기능", "デモのすべての機能", "演示版的全部功能", "Todo lo de la demo", "Alles aus der Demo", "Tout ce qu'il y a dans la démo"],
+    "fu2": ["The fixes found during the demo", "데모 기간에 찾은 문제 수정", "デモ期間に見つかった問題の修正", "演示期间发现问题的修复", "Las correcciones de la demo", "Die Korrekturen aus der Demo", "Les corrections trouvées pendant la démo"],
+    "fu3": ["New modules and updates", "새 모듈과 업데이트", "新しいモジュールとアップデート", "新模块与更新", "Nuevos módulos y actualizaciones", "Neue Module und Updates", "Nouveaux modules et mises à jour"],
+    "btn.later": ["Sign-up opens later", "가입은 나중에 열립니다", "登録は後日開始", "注册稍后开放", "El registro se abrirá más adelante", "Anmeldung öffnet später", "Inscription bientôt"],
+
+    "fb.gh": ["Open an issue on GitHub", "GitHub에 이슈 남기기", "GitHubでIssueを開く", "在 GitHub 提交 issue", "Abrir un issue en GitHub", "Ein Issue auf GitHub öffnen", "Ouvrir un ticket sur GitHub"],
+    "fb.ghnote": ["You'll need a free GitHub account. Say what happened and what you expected.", "무료 GitHub 계정이 필요합니다. 무슨 일이 있었고 무엇을 기대했는지 적어 주세요.", "無料のGitHubアカウントが必要です。何が起きて何を期待したかを書いてください。", "需要免费的 GitHub 账号。写清发生了什么、你期望什么。", "Necesitas una cuenta gratuita de GitHub. Cuenta qué pasó y qué esperabas.", "Du brauchst ein kostenloses GitHub-Konto. Beschreibe, was passiert ist und was du erwartet hast.", "Un compte GitHub gratuit suffit. Dites ce qui s'est passé et ce que vous attendiez."],
+    "nf.watch": ["★ Watch the repo on GitHub for releases", "★ GitHub에서 저장소를 Watch 하면 새 버전 알림", "★ GitHubでリポジトリをWatchして新versionを受け取る", "★ 在 GitHub 上 Watch 仓库以获取发布通知", "★ Sigue (Watch) el repo en GitHub para las versiones", "★ Beobachte das Repo auf GitHub für Releases", "★ Suivez (Watch) le repo GitHub pour les versions"],
+
+        "nf.label": ["Get an email when the next version is ready", "새 버전이 나오면 이메일로 알려드립니다", "新しいバージョンができたらメールでお知らせ", "有新版本时邮件通知你", "Recibe un correo cuando haya nueva versión", "E-Mail bei der nächsten Version", "Un e-mail à la prochaine version"],
+    "nf.ph": ["you@email.com", "you@email.com", "you@email.com", "you@email.com", "you@email.com", "you@email.com", "you@email.com"],
+    "nf.btn": ["Notify me", "알림 받기", "通知を受け取る", "通知我", "Avísame", "Benachrichtigen", "Me prévenir"],
+    "nf.ok": ["Thanks — we'll email you at launch.", "감사합니다 — 출시하면 이메일로 알려드리겠습니다.", "ありがとうございます。公開時にメールします。", "谢谢，上线时会邮件通知你。", "¡Gracias! Te escribiremos al lanzar.", "Danke — wir melden uns zum Start.", "Merci — on vous écrira au lancement."],
+    "nf.bad": ["Please enter a valid email.", "올바른 이메일을 입력해 주세요.", "正しいメールアドレスを入力してください。", "请输入有效的邮箱。", "Introduce un correo válido.", "Bitte gültige E-Mail eingeben.", "Entrez un e-mail valide."],
+    "nf.signin": ["Open this page on claude.ai and sign in to leave your email.", "이메일을 남기려면 claude.ai에서 이 페이지를 열고 로그인하세요.", "メールを残すにはclaude.aiでこのページを開いてログインしてください。", "在 claude.ai 打开本页并登录后可留下邮箱。", "Abre esta página en claude.ai e inicia sesión para dejar tu correo.", "Öffne diese Seite auf claude.ai und melde dich an.", "Ouvrez cette page sur claude.ai et connectez-vous."],
+    "nf.inbox": ["Launch-notify emails (only you see this)", "출시 알림 이메일 (본인만 보임)", "公開通知メール（あなただけが閲覧）", "上线通知邮箱（仅你可见）", "Correos para avisar del lanzamiento (solo tú)", "Launch-E-Mails (nur du)", "E-mails de lancement (vous seul)"],
+    "nf.none": ["No emails yet.", "아직 이메일이 없습니다.", "まだありません。", "还没有邮箱。", "Aún no hay correos.", "Noch keine E-Mails.", "Pas encore d'e-mails."],
+    "toast.later": ["Sign-up opens when the full version launches.", "정식 버전이 나오면 가입이 열립니다.", "正式版の公開時に登録が始まります。", "正式版上线时开放注册。", "El registro se abrirá con la versión completa.", "Die Anmeldung öffnet mit der Vollversion.", "L'inscription ouvrira avec la version complète."],
+    "cr.eyebrow": ["Who made extra", "만든 사람", "制作者", "制作者", "Quién hizo extra", "Wer extra gemacht hat", "Qui a créé extra"],
+    "cr.text": ["Made by Jeon Seol, built together with Claude, Anthropic's AI, in Claude Code.", "Jeon Seol이 만들었고, Anthropic의 AI인 Claude와 함께 Claude Code에서 개발했습니다.", "Jeon Seolが制作し、AnthropicのAIであるClaudeと一緒にClaude Codeで開発しました。", "由 Jeon Seol 制作，与 Anthropic 的 AI Claude 一起在 Claude Code 中开发。", "Creado por Jeon Seol, desarrollado junto con Claude, la IA de Anthropic, en Claude Code.", "Gemacht von Jeon Seol, entwickelt zusammen mit Claude, der KI von Anthropic, in Claude Code.", "Créé par Jeon Seol, développé avec Claude, l'IA d'Anthropic, dans Claude Code."],
+    "r.t1": ["1 try", "1번", "1回", "1 次", "1 intento", "1 Versuch", "1 essai"],
+    "r.t2": ["up to 2 tries", "최대 2번", "最大2回", "最多 2 次", "hasta 2 intentos", "bis zu 2 Versuche", "jusqu'à 2 essais"],
+    "r.t3": ["up to 3 tries", "최대 3번", "最大3回", "最多 3 次", "hasta 3 intentos", "bis zu 3 Versuche", "jusqu'à 3 essais"],
+    "r.t5": ["up to 5 tries", "최대 5번", "最大5回", "最多 5 次", "hasta 5 intentos", "bis zu 5 Versuche", "jusqu'à 5 essais"],
+    "r.t10": ["up to 10 tries", "최대 10번", "最大10回", "最多 10 次", "hasta 10 intentos", "bis zu 10 Versuche", "jusqu'à 10 essais"],
+    "cmp.h": ["Next to large models", "대형 모델과 나란히", "大型モデルと並べると", "与大型模型对比", "Junto a modelos grandes", "Neben großen Modellen", "À côté des grands modèles"],
+    "cmp.model": ["Model", "모델", "モデル", "模型", "Modelo", "Modell", "Modèle"],
+    "cmp.how": ["How it was scored", "채점 방식", "採点方法", "评分方式", "Cómo se puntuó", "Wie bewertet wurde", "Mode de notation"],
+    "cmp.ours10": ["fixed its code after real errors, up to 10 times", "실제 오류를 받고 코드를 고침, 최대 10번", "実際のエラーを受けて修正、最大10回", "收到真实报错后修改，最多 10 次", "corrigió su código tras errores reales, hasta 10 veces", "Code nach echten Fehlern korrigiert, bis zu 10-mal", "code corrigé après de vraies erreurs, jusqu'à 10 fois"],
+    "cmp.ours1": ["first try only", "첫 시도만", "1回目のみ", "仅第一次", "solo el primer intento", "nur erster Versuch", "premier essai seulement"],
+    "cmp.ours1v": ["68.2 (both together)", "68.2 (두 시험 합계)", "68.2（両方の合計）", "68.2（两项合计）", "68.2 (ambos juntos)", "68,2 (beide zusammen)", "68,2 (les deux ensemble)"],
+    "cmp.single": ["one try, no feedback", "한 번, 피드백 없음", "1回、フィードバックなし", "一次，无反馈", "un intento, sin feedback", "ein Versuch, ohne Rückmeldung", "un essai, sans retour"],
+    "cv1": ["<b>Not the same test condition.</b> extra received the error and corrected its code up to 10 times. The other models' numbers come from the public EvalPlus leaderboard and are single tries with no feedback.", "<b>같은 조건의 시험이 아닙니다.</b> extra는 오류를 받아 보고 코드를 최대 10번까지 고쳤습니다. 다른 모델의 점수는 공개된 EvalPlus 순위표에서 가져온 것으로, 피드백 없이 한 번에 푼 점수입니다.", "<b>同じ条件のテストではありません。</b>extraはエラーを受け取り、最大10回までコードを直しました。他のモデルのスコアは公開されているEvalPlusリーダーボードのもので、フィードバックなしの1回の結果です。", "<b>测试条件不同。</b>extra 收到报错后最多修改了 10 次代码。其他模型的分数来自公开的 EvalPlus 排行榜，是无反馈的一次作答。", "<b>No es la misma condición de prueba.</b> extra recibió el error y corrigió su código hasta 10 veces. Las cifras de los otros modelos vienen del ranking público de EvalPlus y son de un solo intento sin feedback.", "<b>Nicht dieselbe Testbedingung.</b> extra bekam den Fehler und korrigierte seinen Code bis zu 10-mal. Die Werte der anderen Modelle stammen aus der öffentlichen EvalPlus-Bestenliste und sind Einzelversuche ohne Rückmeldung.", "<b>Pas les mêmes conditions de test.</b> extra a reçu l'erreur et corrigé son code jusqu'à 10 fois. Les scores des autres modèles viennent du classement public EvalPlus et correspondent à un seul essai sans retour."],
+    "cv2": ["The large models listed are 2024 versions. Newer large models score higher.", "표의 대형 모델은 2024년 버전입니다. 최신 대형 모델은 더 높은 점수를 받습니다.", "表の大型モデルは2024年版です。最新の大型モデルはより高いスコアを出します。", "表中的大型模型是 2024 年版本，更新的大型模型得分更高。", "Los modelos grandes de la tabla son versiones de 2024. Los modelos grandes más nuevos puntúan más alto.", "Die gelisteten großen Modelle sind Versionen von 2024. Neuere große Modelle erreichen mehr.", "Les grands modèles listés sont des versions de 2024. Les plus récents obtiennent de meilleurs scores."],
+    "cv3": ["Our MBPP+ set has 128 tasks; the leaderboard uses 399. Scores from one run can move a few points between runs.", "우리 MBPP+ 문제는 128개이고, 순위표는 399개를 씁니다. 한 번 돌린 점수는 돌릴 때마다 몇 점씩 달라질 수 있습니다.", "私たちのMBPP+は128問、リーダーボードは399問です。1回の実行のスコアは、実行ごとに数ポイント変わることがあります。", "我们的 MBPP+ 有 128 题，排行榜用 399 题。单次运行的分数每次可能相差几分。", "Nuestro conjunto MBPP+ tiene 128 tareas; el ranking usa 399. Las puntuaciones de una sola ejecución pueden variar unos puntos.", "Unser MBPP+-Satz hat 128 Aufgaben, die Bestenliste 399. Ergebnisse eines Laufs können um einige Punkte schwanken.", "Notre jeu MBPP+ compte 128 tâches ; le classement en utilise 399. Les scores d'un seul passage peuvent varier de quelques points."],
+    "mt.h": ["What matters here", "여기서 중요한 것", "ここで大切なこと", "这里的关键", "Lo importante", "Worauf es ankommt", "Ce qui compte"],
+    "mt.p1": ["On its own, the small model gets 68.2% on the first try, below the large models. Letting it run its own code, read the real error and try again takes the same model to 83.6%. Nothing about the model changed; only the way it works did.", "작은 모델 혼자서는 첫 시도에 68.2%로, 대형 모델보다 낮습니다. 자기 코드를 직접 돌려 보고, 진짜 오류를 읽고, 다시 시도하게 하면 같은 모델이 83.6%까지 올라갑니다. 모델은 그대로이고, 일하는 방식만 바뀌었습니다.", "小さなモデル単独では1回目で68.2%と、大型モデルより低い結果です。自分のコードを実行し、本当のエラーを読んで再挑戦させると、同じモデルが83.6%まで上がります。モデルは何も変わらず、働き方だけが変わりました。", "小模型单独作答，第一次只有 68.2%，低于大型模型。让它自己运行代码、读取真实报错再重试，同一个模型可以达到 83.6%。模型本身没有变，变的只是工作方式。", "Por sí solo, el modelo pequeño logra un 68,2 % al primer intento, por debajo de los grandes. Si ejecuta su propio código, lee el error real y lo vuelve a intentar, el mismo modelo llega al 83,6 %. El modelo no cambió; solo su forma de trabajar.", "Allein schafft das kleine Modell beim ersten Versuch 68,2 % – weniger als die großen Modelle. Lässt man es den eigenen Code ausführen, den echten Fehler lesen und es erneut versuchen, erreicht dasselbe Modell 83,6 %. Am Modell hat sich nichts geändert, nur an der Arbeitsweise.", "Seul, le petit modèle obtient 68,2 % au premier essai, moins que les grands modèles. En le laissant exécuter son code, lire la vraie erreur et réessayer, le même modèle atteint 83,6 %. Le modèle n'a pas changé ; seule sa façon de travailler a changé."],
+    "mt.p2": ["Most of the gain comes in the first three tries. After five tries it barely moves, because extra can only fix what an error shows it. Good tests make extra better.", "오르는 폭의 대부분은 처음 세 번 안에 나옵니다. 다섯 번이 넘으면 거의 오르지 않습니다. extra는 오류가 보여 주는 것만 고칠 수 있기 때문입니다. 좋은 테스트가 있으면 extra도 더 잘합니다.", "上昇の大部分は最初の3回で起きます。5回を超えるとほとんど上がりません。extraはエラーが示すものしか直せないからです。良いテストがあれば、extraもより良くなります。", "大部分提升出现在前三次。超过五次后几乎不再提升，因为 extra 只能修正报错指出的问题。好的测试能让 extra 做得更好。", "La mayor parte de la mejora llega en los tres primeros intentos. Tras cinco apenas cambia, porque extra solo puede arreglar lo que un error le muestra. Buenas pruebas hacen mejor a extra.", "Der Großteil des Gewinns kommt in den ersten drei Versuchen. Nach fünf bewegt sich kaum noch etwas, denn extra kann nur beheben, was ein Fehler zeigt. Gute Tests machen extra besser.", "L'essentiel du gain arrive dans les trois premiers essais. Après cinq, presque plus rien ne bouge, car extra ne peut corriger que ce qu'une erreur lui montre. De bons tests rendent extra meilleur."],
+    "mt.p3": ["extra trades time for accuracy. It is slower than a large model, but it runs on your computer with no usage limit, so it can keep trying while your main assistant is out of quota.", "extra는 시간을 써서 정확도를 얻습니다. 대형 모델보다 느리지만 내 컴퓨터에서 사용 한도 없이 돌아가므로, 주로 쓰는 AI의 한도가 바닥난 동안에도 계속 시도할 수 있습니다.", "extraは時間を使って正確さを得ます。大型モデルより遅いですが、自分のパソコンで利用上限なく動くので、メインのAIの上限が尽きている間も試し続けられます。", "extra 用时间换准确度。它比大型模型慢，但在你的电脑上运行、没有用量上限，所以在主力 AI 额度用完时也能继续尝试。", "extra cambia tiempo por precisión. Es más lento que un modelo grande, pero funciona en tu ordenador sin límite de uso, así que puede seguir intentándolo mientras tu asistente principal no tiene cuota.", "extra tauscht Zeit gegen Genauigkeit. Es ist langsamer als ein großes Modell, läuft aber ohne Nutzungslimit auf deinem Computer und kann weiter versuchen, während dein Hauptassistent kein Kontingent mehr hat.", "extra échange du temps contre de la précision. Il est plus lent qu'un grand modèle, mais il tourne sur votre ordinateur sans limite d'utilisation, et peut donc continuer pendant que votre assistant principal n'a plus de quota."],
+    "nav.tips": ["Tips", "팁", "ヒント", "技巧", "Consejos", "Tipps", "Astuces"],
+    "tips.eyebrow": ["Tips", "팁", "ヒント", "使用技巧", "Consejos", "Tipps", "Astuces"],
+    "tips.h2": ["Tips for running extra well.", "extra를 잘 쓰는 팁.", "extraを上手に使うヒント。", "用好 extra 的技巧。", "Consejos para usar bien extra.", "Tipps für extra.", "Astuces pour bien utiliser extra."],
+    "tip1.h": ["Turn on two Ollama settings", "Ollama 설정 두 가지 켜기", "Ollamaの設定を2つオンに", "打开 Ollama 的两项设置", "Activa dos ajustes de Ollama", "Zwei Ollama-Einstellungen einschalten", "Activez deux réglages d'Ollama"],
+    "tip1.p": ["In Terminal, run the two lines below, then quit Ollama from the menu bar and open it again. On our Mac, writing got about 32% faster (10.3 → 13.6 tokens a second) and the model used about 1 GB less memory. Answers stay the same.", "터미널에서 아래 두 줄을 실행한 뒤, 메뉴 막대에서 Ollama를 종료하고 다시 여십시오. 저희 Mac에서는 글 쓰는 속도가 약 32% 빨라졌고(초당 10.3 → 13.6토큰), 메모리를 약 1GB 덜 썼습니다. 답의 품질은 그대로입니다.", "ターミナルで下の2行を実行し、メニューバーからOllamaを終了して開き直してください。私たちのMacでは書く速度が約32%速くなり（毎秒10.3→13.6トークン）、メモリも約1GB減りました。答えの質は変わりません。", "在终端运行下面两行，然后从菜单栏退出 Ollama 再重新打开。在我们的 Mac 上，生成速度快了约 32%（每秒 10.3 → 13.6 个 token），内存少用约 1 GB。回答质量不变。", "En Terminal, ejecuta las dos líneas de abajo y luego cierra Ollama desde la barra de menús y ábrelo de nuevo. En nuestro Mac la escritura fue un 32 % más rápida (10,3 → 13,6 tokens por segundo) y el modelo usó cerca de 1 GB menos de memoria. Las respuestas no cambian.", "Führe im Terminal die beiden Zeilen unten aus, beende Ollama über die Menüleiste und öffne es neu. Auf unserem Mac wurde das Schreiben etwa 32 % schneller (10,3 → 13,6 Token pro Sekunde) und das Modell brauchte rund 1 GB weniger Speicher. Die Antworten bleiben gleich.", "Dans Terminal, lancez les deux lignes ci-dessous, puis quittez Ollama depuis la barre des menus et rouvrez-le. Sur notre Mac, l'écriture a été environ 32 % plus rapide (10,3 → 13,6 tokens par seconde) et le modèle a utilisé environ 1 Go de mémoire en moins. Les réponses restent identiques."],
+    "tip2.h": ["Need it faster? Think less", "더 빠르게 하려면 생각을 줄이기", "速くしたいなら考えを減らす", "想更快？少想一点", "¿Más rápido? Que piense menos", "Schneller? Weniger nachdenken", "Plus rapide ? Moins de réflexion"],
+    "tip2.p": ["Type /set effort low and /set verify off. extra plans less and stops checking each result, so it is faster but makes more mistakes.", "/set effort low 와 /set verify off 를 입력하십시오. 계획을 덜 세우고 매 결과 검증을 하지 않아 빨라지지만, 실수는 늘어납니다.", "/set effort low と /set verify off を入力します。計画を減らし、毎回の検証をしないので速くなりますが、ミスは増えます。", "输入 /set effort low 和 /set verify off。extra 会少做计划、不再逐步验证，更快但错误会变多。", "Escribe /set effort low y /set verify off. extra planifica menos y deja de comprobar cada resultado: va más rápido pero comete más errores.", "Tippe /set effort low und /set verify off. extra plant weniger und prüft nicht mehr jedes Ergebnis – schneller, aber mit mehr Fehlern.", "Tapez /set effort low et /set verify off. extra planifie moins et ne vérifie plus chaque résultat : plus rapide, mais plus d'erreurs."],
+    "tip3.h": ["Give it a check command", "확인 명령을 주기", "確認コマンドを渡す", "给它一个检查命令", "Dale un comando de comprobación", "Gib ihm einen Prüfbefehl", "Donnez-lui une commande de vérification"],
+    "tip3.p": ["extra fixes what an error shows it. A test or a small script that fails until the job is done makes it much better.", "extra는 오류가 보여 주는 것을 고칩니다. 일이 끝나기 전까지 실패하는 테스트나 작은 스크립트가 있으면 훨씬 잘합니다.", "extraはエラーが示すものを直します。作業が終わるまで失敗するテストや小さなスクリプトがあると、ずっと良くなります。", "extra 修复的是报错指出的问题。有一个在任务完成前一直失败的测试或小脚本，它会做得好得多。", "extra corrige lo que un error le muestra. Una prueba o un pequeño script que falle hasta terminar el trabajo lo hace mucho mejor.", "extra behebt, was ein Fehler zeigt. Ein Test oder kleines Skript, das scheitert, bis die Arbeit fertig ist, macht es deutlich besser.", "extra corrige ce qu'une erreur lui montre. Un test ou un petit script qui échoue tant que le travail n'est pas fini le rend bien meilleur."],
+    "tip4.h": ["Let Claude leave a note", "Claude가 메모를 남기게 하기", "Claudeにメモを残させる", "让 Claude 留下笔记", "Deja que Claude deje una nota", "Lass Claude eine Notiz hinterlassen", "Laissez Claude laisser une note"],
+    "tip4.p": ["With the extra-handoff skill, Claude keeps a note of the task. Then run extra continue anywhere and press Enter to pick up the newest note.", "extra-handoff 스킬이 있으면 Claude가 작업 메모를 남깁니다. 그다음 어디서든 extra continue를 실행하고 Enter를 누르면 가장 최근 메모를 이어받습니다.", "extra-handoffスキルがあると、Claudeが作業メモを残します。あとはどこでも extra continue を実行してEnterを押せば、最新のメモを引き継ぎます。", "有了 extra-handoff 技能，Claude 会记下任务笔记。之后在任何位置运行 extra continue 并按回车，就能接手最新的笔记。", "Con la skill extra-handoff, Claude guarda una nota de la tarea. Luego ejecuta extra continue en cualquier sitio y pulsa Intro para retomar la nota más reciente.", "Mit dem Skill extra-handoff führt Claude eine Notiz zur Aufgabe. Dann irgendwo extra continue ausführen und Enter drücken, um die neueste Notiz zu übernehmen.", "Avec la skill extra-handoff, Claude tient une note de la tâche. Lancez ensuite extra continue n'importe où et appuyez sur Entrée pour reprendre la note la plus récente."],
+    "ut.h": ["Tips from people who use extra", "extra 사용자들이 남긴 팁", "extraユーザーのヒント", "来自 extra 用户的技巧", "Consejos de quienes usan extra", "Tipps von extra-Nutzern", "Astuces des utilisateurs d'extra"],
+    "ut.loading": ["Loading tips…", "팁을 불러오는 중…", "ヒントを読み込み中…", "正在加载…", "Cargando consejos…", "Tipps werden geladen…", "Chargement des astuces…"],
+    "ut.label": ["Share a tip", "팁 남기기", "ヒントを共有", "分享技巧", "Comparte un consejo", "Tipp teilen", "Partager une astuce"],
+    "ut.ph": ["What helped you use extra better?", "extra를 더 잘 쓰는 데 무엇이 도움이 됐습니까?", "extraを上手に使うのに何が役立ちましたか？", "什么帮助你更好地使用 extra？", "¿Qué te ayudó a usar mejor extra?", "Was hat dir geholfen, extra besser zu nutzen?", "Qu'est-ce qui vous a aidé à mieux utiliser extra ?"],
+    "cat.setup": ["Setup", "설정", "設定", "设置", "Configuración", "Einrichtung", "Configuration"],
+    "cat.workflow": ["Workflow", "작업 방식", "使い方", "工作方式", "Flujo de trabajo", "Arbeitsweise", "Façon de travailler"],
+    "cat.other": ["Other", "기타", "その他", "其他", "Otro", "Sonstiges", "Autre"],
+    "ut.post": ["Post tip", "팁 올리기", "投稿する", "发布", "Publicar", "Tipp posten", "Publier"],
+    "ut.posting": ["Sending…", "보내는 중…", "送信中…", "发送中…", "Enviando…", "Wird gesendet…", "Envoi…"],
+    "ut.posted": ["Posted. Thank you.", "올렸습니다. 감사합니다.", "投稿しました。ありがとうございます。", "已发布，谢谢。", "Publicado. Gracias.", "Gepostet. Danke.", "Publié. Merci."],
+    "ut.fail": ["That did not go through. Please try again.", "전송되지 않았습니다. 다시 시도해 주십시오.", "送信できませんでした。もう一度お試しください。", "发送失败，请重试。", "No se pudo enviar. Inténtalo de nuevo.", "Das hat nicht geklappt. Bitte erneut versuchen.", "L'envoi a échoué. Réessayez."],
+    "ut.full": ["The tip board is full right now.", "팁 게시판이 지금 가득 찼습니다.", "掲示板がいっぱいです。", "技巧板已满。", "El tablón está lleno.", "Die Pinnwand ist gerade voll.", "Le tableau est plein."],
+    "ut.empty": ["No tips yet. Be the first to share one.", "아직 팁이 없습니다. 첫 팁을 남겨 주십시오.", "まだヒントはありません。最初の一つをどうぞ。", "还没有技巧，来分享第一条吧。", "Aún no hay consejos. Sé el primero.", "Noch keine Tipps. Teile den ersten.", "Pas encore d'astuce. Soyez le premier."],
+    "ut.someone": ["Someone", "누군가", "誰か", "某人", "Alguien", "Jemand", "Quelqu'un"],
+    "ut.remove": ["remove", "지우기", "削除", "删除", "quitar", "entfernen", "retirer"],
+    "ut.signin": ["Sign in to Claude to read and post tips and feedback.", "팁과 피드백을 보고 남기려면 Claude에 로그인하십시오.", "ヒントとフィードバックの閲覧・投稿にはClaudeへのログインが必要です。", "登录 Claude 后即可查看和发布技巧与反馈。", "Inicia sesión en Claude para leer y publicar consejos y comentarios.", "Melde dich bei Claude an, um Tipps und Feedback zu lesen und zu posten.", "Connectez-vous à Claude pour lire et publier astuces et retours."],
+    "ut.offline": ["Tips and feedback work when this page is opened on claude.ai.", "팁과 피드백은 이 페이지를 claude.ai에서 열었을 때 동작합니다.", "ヒントとフィードバックは、このページをclaude.aiで開いたときに使えます。", "在 claude.ai 上打开本页时可使用技巧与反馈。", "Los consejos y comentarios funcionan al abrir esta página en claude.ai.", "Tipps und Feedback funktionieren, wenn diese Seite auf claude.ai geöffnet ist.", "Les astuces et retours fonctionnent quand cette page est ouverte sur claude.ai."],
+    "ut.slow": ["Tips can't be reached yet. They will appear when the connection comes back.", "아직 팁을 불러오지 못했습니다. 연결되면 나타납니다.", "まだヒントを読み込めません。接続が戻ると表示されます。", "暂时无法加载，连接恢复后会显示。", "Aún no se pueden cargar. Aparecerán cuando vuelva la conexión.", "Tipps sind noch nicht erreichbar. Sie erscheinen, sobald die Verbindung zurück ist.", "Les astuces ne sont pas encore accessibles. Elles apparaîtront au retour de la connexion."],
+    "fb.eyebrow": ["Feedback", "피드백", "フィードバック", "反馈", "Comentarios", "Feedback", "Retours"],
+    "fb.h2": ["Tell us what broke or what you want.", "무엇이 고장 났는지, 무엇을 원하시는지 알려 주십시오.", "壊れたことや欲しい機能を教えてください。", "告诉我们哪里坏了、你想要什么。", "Cuéntanos qué falló o qué quieres.", "Sag uns, was kaputt ist oder was du willst.", "Dites-nous ce qui a cassé ou ce que vous voulez."],
+    "fb.intro": ["extra is a demo, so every report helps. Only you and the maker can read what you send.", "extra는 데모라서 모든 의견이 도움이 됩니다. 보내신 내용은 본인과 만든 사람만 볼 수 있습니다.", "extraはデモなので、どんな報告も役立ちます。送った内容は本人と制作者だけが読めます。", "extra 还是演示版，每条反馈都有帮助。你发送的内容只有你和制作者能看到。", "extra es una demo, así que cada informe ayuda. Solo tú y el creador podéis leer lo que envías.", "extra ist eine Demo, jede Rückmeldung hilft. Nur du und der Entwickler könnt lesen, was du sendest.", "extra est une démo : chaque retour aide. Seuls vous et le créateur pouvez lire ce que vous envoyez."],
+    "fb.ph": ["What happened? What did you expect?", "무슨 일이 있었고, 어떻게 되길 기대하셨습니까?", "何が起きて、どうなると思っていましたか？", "发生了什么？你原本期望什么？", "¿Qué pasó? ¿Qué esperabas?", "Was ist passiert? Was hast du erwartet?", "Que s'est-il passé ? Qu'attendiez-vous ?"],
+    "fbk.bug": ["Something broke", "오류", "不具合", "出错了", "Algo falló", "Fehler", "Un bug"],
+    "fbk.idea": ["Idea", "아이디어", "アイデア", "建议", "Idea", "Idee", "Idée"],
+    "fb.send": ["Send feedback", "피드백 보내기", "送信する", "发送反馈", "Enviar", "Feedback senden", "Envoyer"],
+    "fb.thanks": ["Sent. Thank you — we read every one.", "보냈습니다. 감사합니다. 모두 읽겠습니다.", "送信しました。ありがとうございます。すべて読みます。", "已发送，谢谢，我们会逐条阅读。", "Enviado. Gracias, los leemos todos.", "Gesendet. Danke – wir lesen alles.", "Envoyé. Merci, nous lisons tout."],
+    "fb.inbox": ["Feedback received (only you see this)", "받은 피드백 (나만 보임)", "届いたフィードバック（あなただけに表示）", "收到的反馈（仅你可见）", "Comentarios recibidos (solo tú los ves)", "Erhaltenes Feedback (nur für dich sichtbar)", "Retours reçus (visibles par vous seul)"],
+    "fb.none": ["No feedback yet.", "아직 받은 피드백이 없습니다.", "まだフィードバックはありません。", "还没有反馈。", "Aún no hay comentarios.", "Noch kein Feedback.", "Pas encore de retours."],
+    "nav.real": ["Real run", "실제 실행", "実際の実行", "真实运行", "Ejecución real", "Echter Lauf", "Exécution réelle"],
+    "real.eyebrow": ["A real run", "실제 실행", "実際の実行", "一次真实运行", "Una ejecución real", "Ein echter Lauf", "Une exécution réelle"],
+    "real.h2": ["Claude stopped halfway. extra finished it.", "Claude가 중간에 멈춘 일을, extra가 끝냈습니다.", "Claudeが途中で止めた作業を、extraが仕上げました。", "Claude 做到一半停下，extra 接着做完。", "Claude se detuvo a medias. extra lo terminó.", "Claude hörte auf halbem Weg auf. extra hat es fertig gemacht.", "Claude s'est arrêté à mi-chemin. extra a terminé."],
+    "real.intro": ["This is one real run, shown as it happened. The window below is extra's own output, the pictures are the page it finished, and every number was measured.", "실제로 한 번 돌린 결과를 그대로 보여 드립니다. 아래 창은 extra가 실제로 출력한 내용이고, 그림은 extra가 완성한 페이지이며, 모든 숫자는 직접 잰 값입니다.", "実際に一度動かした結果を、そのままお見せします。下のウィンドウはextraの実際の出力、画像はextraが仕上げたページ、数字はすべて実測値です。", "这是一次真实运行的原样记录。下面的窗口是 extra 的实际输出，图片是它完成的页面，所有数字都是实测的。", "Es una ejecución real, tal como ocurrió. La ventana de abajo es la salida de extra, las imágenes son la página que terminó y cada número se midió.", "Das ist ein echter Lauf, so wie er passiert ist. Das Fenster unten ist die Ausgabe von extra, die Bilder zeigen die fertige Seite, und jede Zahl wurde gemessen.", "Voici une exécution réelle, telle qu'elle s'est passée. La fenêtre ci-dessous est la sortie d'extra, les images montrent la page terminée, et chaque chiffre a été mesuré."],
+    "real.s1h": ["What Claude left", "Claude가 남긴 것", "Claudeが残したもの", "Claude 留下的", "Lo que dejó Claude", "Was Claude hinterließ", "Ce que Claude a laissé"],
+    "real.s1p": ["A currency converter half done: the page, the styles and the conversion work. Getting live exchange rates was still a stub with fixed numbers. Claude left a handoff note (what is done, what is next) and a check script that defines done.", "절반쯤 된 환율 계산기입니다. 화면, 디자인, 계산은 됩니다. 실시간 환율 받아오기만 고정 숫자로 비어 있었습니다. Claude는 인계 메모(한 일, 다음 할 일)와 '완료'의 기준이 되는 확인 스크립트를 남겼습니다.", "半分できた為替計算機です。画面、デザイン、計算は動きます。リアルタイムの為替取得だけが固定値のままでした。Claudeは引き継ぎメモ（済んだこと・次のこと）と、完了の基準になる確認スクリプトを残しました。", "一个做了一半的汇率换算器：页面、样式和换算都已可用，只有获取实时汇率还是固定数字的占位。Claude 留下了交接笔记（已完成、下一步）和定义“完成”的检查脚本。", "Un conversor de divisas a medias: la página, los estilos y la conversión funcionan. Obtener tipos en vivo seguía siendo un esbozo con números fijos. Claude dejó una nota de traspaso y un script de comprobación que define cuándo está hecho.", "Ein halb fertiger Währungsrechner: Seite, Styles und Umrechnung funktionieren. Live-Kurse waren noch ein Platzhalter mit festen Zahlen. Claude hinterließ eine Übergabenotiz und ein Prüfskript, das „fertig“ festlegt.", "Un convertisseur à moitié fait : la page, les styles et la conversion marchent. Les taux en direct n'étaient encore qu'un bouchon aux chiffres fixes. Claude a laissé une note de passation et un script de vérification qui définit « terminé »."],
+    "real.s2h": ["What extra did", "extra가 한 일", "extraがしたこと", "extra 做了什么", "Lo que hizo extra", "Was extra tat", "Ce qu'extra a fait"],
+    "real.s2p": ["It read the note, tried a free rates API with curl, wrote getRates(), and ran the check. The check failed (no warning when offline), so it read why, fixed one function and ran it again until it passed. Then it updated the note for Claude. 8 steps, 9 minutes 53 seconds, no help.", "메모를 읽고, 무료 환율 API를 curl로 확인하고, getRates()를 작성한 뒤 확인을 돌렸습니다. 확인이 실패하자(오프라인일 때 경고 없음) 이유를 읽고 함수 하나를 고쳐 통과할 때까지 다시 돌렸습니다. 그다음 Claude를 위해 메모를 갱신했습니다. 8단계, 9분 53초, 도움 없이.", "メモを読み、無料の為替APIをcurlで確かめ、getRates()を書いて確認を実行しました。確認が失敗すると（オフライン時に警告なし）理由を読み、関数を一つ直して通るまで再実行しました。その後Claudeのためにメモを更新しました。8ステップ、9分53秒、手助けなし。", "它读了笔记，用 curl 试了一个免费汇率 API，写好 getRates() 并运行检查。检查失败（离线时没有提示），它读懂原因，修改了一个函数，再跑直到通过，然后为 Claude 更新笔记。8 步，9 分 53 秒，无人帮助。", "Leyó la nota, probó una API gratuita con curl, escribió getRates() y ejecutó la comprobación. Falló (sin aviso sin conexión), así que leyó por qué, corrigió una función y repitió hasta pasar. Luego actualizó la nota para Claude. 8 pasos, 9 min 53 s, sin ayuda.", "Es las die Notiz, testete eine kostenlose Kurs-API mit curl, schrieb getRates() und startete die Prüfung. Sie schlug fehl (keine Warnung offline), also las es den Grund, korrigierte eine Funktion und prüfte erneut, bis es passte. Dann aktualisierte es die Notiz für Claude. 8 Schritte, 9 Min. 53 s, ohne Hilfe.", "Il a lu la note, testé une API gratuite avec curl, écrit getRates() et lancé la vérification. Elle a échoué (pas d'avertissement hors ligne) ; il a lu pourquoi, corrigé une fonction et relancé jusqu'à réussir. Puis il a mis à jour la note pour Claude. 8 étapes, 9 min 53 s, sans aide."],
+    "real.s3h": ["How it was checked", "어떻게 확인했나", "どう確認したか", "如何检查", "Cómo se comprobó", "Wie geprüft wurde", "Comment c'est vérifié"],
+    "real.s3p": ["The check opens the page in a real browser (headless Chrome) three times: online, offline after one visit, and offline on a first visit. It looks at the status line, its colour, the saved time and the converted amount, and prints what it saw.", "확인 스크립트는 실제 브라우저(화면 없는 크롬)로 페이지를 세 번 엽니다. 온라인, 한 번 방문한 뒤 오프라인, 처음부터 오프라인. 상태 줄과 그 색, 저장된 시각, 계산 결과를 보고, 본 내용을 출력합니다.", "確認スクリプトは実際のブラウザ（ヘッドレスChrome）でページを3回開きます。オンライン、一度訪れた後のオフライン、初回からオフライン。ステータス行とその色、保存時刻、換算結果を見て、見た内容を出力します。", "检查脚本用真实浏览器（无头 Chrome）打开页面三次：在线、访问过一次后离线、首次访问就离线。它查看状态行及其颜色、保存时间和换算金额，并打印所见内容。", "La comprobación abre la página en un navegador real (Chrome sin interfaz) tres veces: con conexión, sin conexión tras una visita y sin conexión en la primera visita. Mira la línea de estado, su color, la hora guardada y el importe, e imprime lo que vio.", "Die Prüfung öffnet die Seite dreimal in einem echten Browser (headless Chrome): online, offline nach einem Besuch und offline beim ersten Besuch. Sie prüft Statuszeile, Farbe, gespeicherte Zeit und Betrag und gibt aus, was sie sah.", "La vérification ouvre la page trois fois dans un vrai navigateur (Chrome sans interface) : en ligne, hors ligne après une visite, et hors ligne dès la première visite. Elle regarde la ligne d'état, sa couleur, l'heure enregistrée et le montant, et affiche ce qu'elle a vu."],
+    "real.cap1": ["Online — live rates and the time they were fetched.", "온라인 — 실시간 환율과 받아 온 시각.", "オンライン — リアルタイムの為替と取得時刻。", "在线 —— 实时汇率及获取时间。", "Con conexión — tipos en vivo y la hora en que se obtuvieron.", "Online — Live-Kurse und Abrufzeit.", "En ligne — taux en direct et heure de récupération."],
+    "real.cap2": ["Offline — it keeps working with the saved rates and says so in orange.", "오프라인 — 저장된 환율로 계속 동작하고, 주황색으로 알려 줍니다.", "オフライン — 保存した為替で動き続け、オレンジ色で知らせます。", "离线 —— 用保存的汇率继续工作，并用橙色提示。", "Sin conexión — sigue funcionando con los tipos guardados y lo indica en naranja.", "Offline — rechnet mit gespeicherten Kursen weiter und sagt es in Orange.", "Hors ligne — il continue avec les taux enregistrés et le signale en orange."],
+    "real.hh": ["How often it works", "얼마나 자주 성공하나", "どのくらい成功するか", "成功率如何", "Con qué frecuencia funciona", "Wie oft es klappt", "À quelle fréquence ça marche"],
+    "real.hp1": ["We ran this same task 18 times from the same starting point. 12 runs passed. Each failure had a different cause, and each one is now caught by the program: forgetting the task in long runs, not finding where an error came from, repeating the same command, putting the tool name inside a command, editing the check itself, and stopping while the check still failed. After the last fix, the last 3 runs in a row passed.", "같은 출발점에서 이 작업을 18번 돌렸고, 12번 통과했습니다. 실패마다 원인이 달랐고, 지금은 모두 프로그램이 잡아냅니다. 긴 작업에서 할 일을 잊음, 오류가 어디서 나왔는지 못 찾음, 같은 명령 반복, 명령 앞에 도구 이름을 붙임, 확인 스크립트 자체를 고치려 함, 확인이 실패한 채로 멈춤. 마지막 수정 뒤에는 3번 연속 통과했습니다.", "同じ出発点からこの作業を18回実行し、12回合格しました。失敗の原因は毎回違い、今はすべてプログラムが捕まえます。長い作業でやることを忘れる、エラーの出どころを見つけられない、同じコマンドの繰り返し、コマンドの前にツール名を付ける、確認スクリプト自体を変えようとする、確認が失敗したまま止まる。最後の修正後は3回連続で合格しました。", "我们从同一起点把这个任务跑了 18 次，通过 12 次。每次失败原因都不同，现在都由程序拦下：长任务中忘了目标、找不到错误来源、重复同一命令、把工具名写进命令、试图修改检查脚本本身、检查仍失败就停下。最后一次修正后，连续 3 次通过。", "Ejecutamos esta misma tarea 18 veces desde el mismo punto de partida. Pasaron 12. Cada fallo tuvo una causa distinta y ahora el programa los detecta todos: olvidar la tarea en ejecuciones largas, no encontrar de dónde venía un error, repetir el mismo comando, poner el nombre de la herramienta dentro del comando, editar la propia comprobación y parar con la comprobación fallando. Tras la última corrección, las 3 últimas seguidas pasaron.", "Wir haben dieselbe Aufgabe 18-mal vom selben Ausgangspunkt gestartet. 12 Läufe bestanden. Jeder Fehlschlag hatte eine andere Ursache, und jede fängt jetzt das Programm ab: die Aufgabe in langen Läufen vergessen, die Fehlerquelle nicht finden, denselben Befehl wiederholen, den Werkzeugnamen in den Befehl schreiben, die Prüfung selbst ändern und aufhören, obwohl die Prüfung noch fehlschlägt. Nach der letzten Korrektur bestanden die letzten 3 Läufe in Folge.", "Nous avons lancé cette même tâche 18 fois depuis le même point de départ. 12 ont réussi. Chaque échec avait une cause différente, et le programme les rattrape toutes désormais : oublier la tâche sur un long travail, ne pas trouver d'où vient une erreur, répéter la même commande, mettre le nom de l'outil dans la commande, modifier la vérification elle-même, et s'arrêter alors qu'elle échoue encore. Après la dernière correction, les 3 dernières exécutions ont réussi d'affilée."],
+    "real.hp2": ["It is still a small model. Sometimes it cannot find a bug. When that happens, extra does not pretend: it says it stopped with the check still failing and writes that in the note for Claude.", "그래도 작은 모델이라 버그를 끝내 못 찾을 때가 있습니다. 그럴 때 extra는 된 척하지 않습니다. 확인이 실패한 채로 멈췄다고 말하고, Claude를 위한 메모에도 그렇게 적습니다.", "それでも小さなモデルなので、バグを見つけられないことがあります。そのときextraはできたふりをしません。確認が失敗したまま止まったと伝え、Claude向けのメモにもそう書きます。", "它仍是一个小模型，有时找不到 bug。这时 extra 不会假装完成：它会说明检查仍未通过就停下了，并在给 Claude 的笔记里写明。", "Sigue siendo un modelo pequeño. A veces no encuentra un fallo. Entonces extra no finge: dice que paró con la comprobación fallando y lo anota para Claude.", "Es ist immer noch ein kleines Modell. Manchmal findet es einen Fehler nicht. Dann tut extra nicht so, als ob: Es sagt, dass es mit fehlschlagender Prüfung aufgehört hat, und schreibt das in die Notiz für Claude.", "Cela reste un petit modèle. Parfois il ne trouve pas un bug. Dans ce cas extra ne fait pas semblant : il dit qu'il s'est arrêté avec la vérification en échec et l'écrit dans la note pour Claude."],
+    "m11": ["Built-in expert instructions for design, browser testing, debugging and verifying before saying done — from Anthropic's and the superpowers open-source skills. extra picks the right ones for your request.", "디자인, 브라우저 테스트, 디버깅, '끝났다'고 말하기 전 검증을 위한 전문가 지시가 기본으로 들어 있습니다. Anthropic과 superpowers의 공개 스킬을 가져왔고, extra가 요청에 맞는 것을 골라 씁니다.", "デザイン、ブラウザテスト、デバッグ、完了と言う前の検証のための専門家の指示が組み込まれています。Anthropicとsuperpowersのオープンソーススキルをもとにしており、extraが依頼に合うものを選びます。", "内置设计、浏览器测试、调试和“完成前先验证”的专家指令，来自 Anthropic 与 superpowers 的开源技能。extra 会按你的请求挑选合适的技能。", "Instrucciones expertas integradas para diseño, pruebas en el navegador, depuración y verificar antes de dar algo por hecho, tomadas de las skills abiertas de Anthropic y superpowers. extra elige las adecuadas.", "Eingebaute Expertenanweisungen für Design, Browsertests, Debugging und Prüfen vor dem Fertigmelden – aus den Open-Source-Skills von Anthropic und superpowers. extra wählt die passenden.", "Des instructions d'expert intégrées pour le design, les tests dans le navigateur, le débogage et la vérification avant de dire « terminé » — issues des skills open source d'Anthropic et de superpowers. extra choisit les bonnes."],
+    "cmd6": ["See the skills, or use one for your next request", "스킬 목록 보기, 또는 다음 요청에 스킬 하나 쓰기", "スキル一覧、または次の依頼で一つ使う", "查看技能，或在下一个请求中使用一个", "Ver las skills o usar una en tu próxima petición", "Skills ansehen oder eines für die nächste Anfrage nutzen", "Voir les skills, ou en utiliser une pour la prochaine demande"],
+    "nav.team": ["Teamwork", "공동 작업", "共同作業", "协作", "En equipo", "Teamarbeit", "En équipe"],
+    "nav.how": ["How it works", "작동 방식", "仕組み", "工作原理", "Cómo funciona", "So funktioniert's", "Fonctionnement"],
+    "nav.modules": ["Modules", "모듈", "モジュール", "模块", "Módulos", "Module", "Modules"],
+        "nav.pricing": ["Get", "받기", "入手", "获取", "Obtener", "Holen", "Obtenir"],
+    "nav.get": ["Get extra", "extra 받기", "extraを入手", "获取 extra", "Obtener extra", "extra holen", "Obtenir extra"],
+    "hero.h1": ["Hit your limit?<br>extra keeps <i>going.</i>", "한도에 걸렸습니까?<br>extra가 <i>이어서 합니다.</i>", "上限に達しましたか？<br>extraが<i>続けます。</i>", "用量到上限了？<br>extra <i>接着干。</i>", "¿Llegaste al límite?<br>extra <i>sigue.</i>", "Limit erreicht?<br>extra <i>macht weiter.</i>", "Limite atteinte ?<br>extra <i>continue.</i>"],
+    "hero.lede": ["A local coding agent for your terminal. When Claude or another assistant hits its usage limit, extra picks up the same task and works on it until it is done.", "터미널에서 일하는 로컬 코딩 에이전트입니다. Claude 같은 AI가 사용 한도에 걸리면, extra가 같은 작업을 이어받아 끝날 때까지 계속합니다.", "ターミナルで動くローカルのコーディングエージェントです。Claudeなどのアシスタントが利用上限に達したら、extraが同じ作業を引き継ぎ、終わるまで続けます。", "在终端里工作的本地编程代理。Claude 等助手达到用量上限时，extra 接手同一个任务，一直做到完成。", "Un agente de programación local para tu terminal. Cuando Claude u otro asistente llega a su límite de uso, extra retoma la misma tarea y trabaja hasta terminarla.", "Ein lokaler Coding-Agent für dein Terminal. Wenn Claude oder ein anderer Assistent sein Nutzungslimit erreicht, übernimmt extra dieselbe Aufgabe und arbeitet, bis sie fertig ist.", "Un agent de code local pour votre terminal. Quand Claude ou un autre assistant atteint sa limite d'utilisation, extra reprend la même tâche et la mène jusqu'au bout."],
+    "hero.dl": ["Download for Mac", "Mac용 다운로드", "Mac版をダウンロード", "下载 Mac 版", "Descargar para Mac", "Für Mac laden", "Télécharger pour Mac"],
+    "hero.see": ["See the modules", "모듈 보기", "モジュールを見る", "查看模块", "Ver los módulos", "Module ansehen", "Voir les modules"],
+    "hero.req": ["macOS with 16 GB of memory or more. Windows and Linux later.", "메모리 16GB 이상의 macOS. Windows와 Linux는 곧 지원합니다.", "メモリ16GB以上のmacOS。WindowsとLinuxは今後対応します。",
+      "需要 16 GB 以上内存的 macOS。Windows 和 Linux 稍后支持。", "macOS con 16 GB de memoria o más. Windows y Linux, más adelante.", "macOS mit mindestens 16 GB Arbeitsspeicher. Windows und Linux folgen.", "macOS avec 16 Go de mémoire ou plus. Windows et Linux plus tard."],
+    "how.eyebrow": ["When the limit hits", "한도에 걸렸을 때", "上限に達したら", "当用量用完时", "Cuando llega el límite", "Wenn das Limit kommt", "Quand la limite tombe"],
+    "how.h2": ["Pick up right where you stopped.", "멈춘 곳에서 바로 이어 갑니다.", "止まったところからすぐ続けます。", "从停下的地方直接接着做。", "Retoma justo donde te quedaste.", "Mach genau dort weiter, wo du aufgehört hast.", "Reprenez exactement là où vous en étiez."],
+    "how.intro": ["Run extra continue in the same folder. It reads what you asked your assistant, checks the state of the project, and keeps working on that one task for as long as it takes. It installs what it needs after you say yes.", "같은 폴더에서 extra continue를 실행하십시오. 직전 AI에게 시킨 일을 읽고 프로젝트 상태를 확인한 뒤, 그 작업 하나를 끝날 때까지 계속합니다. 필요한 것은 승인을 받고 직접 설치합니다.", "同じフォルダで extra continue を実行してください。アシスタントに頼んだ内容を読み、プロジェクトの状態を確認して、その1つの作業を終わるまで続けます。必要なものは承認を得てから自分でインストールします。", "在同一个文件夹运行 extra continue。它会读取你之前交给助手的任务，检查项目状态，然后一直做这一个任务直到完成。需要的东西会在你同意后自己安装。", "Ejecuta extra continue en la misma carpeta. Lee lo que le pediste a tu asistente, revisa el estado del proyecto y sigue con esa tarea el tiempo que haga falta. Instala lo que necesite cuando digas que sí.", "Starte extra continue im selben Ordner. Es liest, was du deinem Assistenten aufgetragen hast, prüft den Projektstand und arbeitet an dieser einen Aufgabe, so lange es dauert. Was es braucht, installiert es nach deinem Ja.", "Lancez extra continue dans le même dossier. Il lit ce que vous aviez demandé à votre assistant, vérifie l'état du projet et poursuit cette tâche aussi longtemps qu'il le faut. Il installe ce dont il a besoin après votre accord."],
+    "mods.eyebrow": ["Modules", "모듈", "モジュール", "模块", "Módulos", "Module", "Modules"],
+    "mods.h2": ["Small add-ons that keep it working.", "계속 일하게 해 주는 작은 추가 기능.", "働き続けるための小さな追加機能。", "让它一直干下去的小插件。", "Pequeños complementos que lo mantienen trabajando.", "Kleine Erweiterungen, die es weiterarbeiten lassen.", "De petits modules qui le font continuer."],
+    "mods.intro": ["Each module plugs into the same local model. Turn them on one at a time and keep the ones that help.", "모든 모듈은 같은 로컬 모델에 붙습니다. 하나씩 켜 보시고 도움 되는 것만 남기시면 됩니다.",
+      "どのモジュールも同じローカルモデルに組み込めます。一つずつ試して、役立つものだけ残してください。", "每个模块都接在同一个本地模型上。一个个打开，留下有用的。",
+      "Cada módulo se conecta al mismo modelo local. Actívalos uno a uno y quédate con los que ayudan.", "Jedes Modul steckt im selben lokalen Modell. Schalte sie einzeln ein und behalte die nützlichen.",
+      "Chaque module se branche sur le même modèle local. Activez-les un par un et gardez ceux qui aident."],
+    "m1": ["Before each step it writes what it will do and what it expects to happen, then does exactly that.", "매 단계 전에 무엇을 할지, 무슨 일이 일어날지 예상해서 적고, 그대로 실행합니다.",
+      "各ステップの前に、何をするか・何が起きるかを書き出し、その通りに実行します。", "每一步之前先写下要做什么、预计会发生什么，然后照做。",
+      "Antes de cada paso escribe qué hará y qué espera que pase, y luego hace exactamente eso.", "Vor jedem Schritt schreibt es auf, was es tun wird und was es erwartet, und tut dann genau das.",
+      "Avant chaque étape, il écrit ce qu'il va faire et ce qu'il prévoit, puis fait exactement cela."],
+    "m2": ["Runs the code it wrote, reads the actual error or test result, and tries again with that in hand.", "직접 쓴 코드를 실행하고, 실제 오류나 시험 결과를 읽은 뒤 그걸 바탕으로 다시 시도합니다.",
+      "書いたコードを実行し、実際のエラーやテスト結果を読んで、それを踏まえてやり直します。", "运行自己写的代码，读取真实的报错或测试结果，再据此重试。",
+      "Ejecuta el código que escribió, lee el error o el resultado real de las pruebas y vuelve a intentarlo con eso.", "Führt den geschriebenen Code aus, liest den echten Fehler oder das Testergebnis und versucht es damit erneut.",
+      "Exécute le code qu'il a écrit, lit l'erreur ou le résultat de test réel, puis réessaie en conséquence."],
+    "m3": ["When it gets blocked, it lists other approaches and tries the best one before it tells you something can't be done.", "막히면 다른 방법을 여러 개 떠올리고 가장 나은 걸 시도합니다. 안 된다는 말은 그다음에야 합니다.",
+      "行き詰まったら別の方法を挙げ、一番良いものを試してから「できない」と伝えます。", "卡住时，它会列出其他方法并先试最好的一个，然后才会说做不到。",
+      "Cuando se atasca, enumera otras vías y prueba la mejor antes de decirte que algo no se puede.", "Wenn es feststeckt, sammelt es andere Wege und probiert den besten, bevor es sagt, dass etwas nicht geht.",
+      "Quand il est bloqué, il liste d'autres approches et essaie la meilleure avant de dire que c'est impossible."],
+    "m4": ["Catches answers that claim work it didn't do, like a file it never saved, and makes it finish the job.", "하지 않은 일을 했다고 하는 답(저장하지도 않은 파일 같은)을 잡아내고, 끝까지 하게 만듭니다.",
+      "やっていない作業をやったと言う答え（保存していないファイルなど）を見つけ、最後までやらせます。", "发现它声称做了其实没做的事（比如从没保存的文件），并让它把活干完。",
+      "Detecta respuestas que afirman un trabajo no hecho, como un archivo que nunca guardó, y le hace terminarlo.", "Erkennt Antworten, die Arbeit behaupten, die nicht getan wurde, etwa eine nie gespeicherte Datei, und lässt sie nachholen.",
+      "Repère les réponses qui prétendent un travail non fait, comme un fichier jamais enregistré, et lui fait terminer."],
+    "m7": ["Shows a colored diff and asks before it writes a file or runs a command. It never writes outside your project.", "파일을 쓰거나 명령을 실행하기 전에 바뀌는 부분을 색으로 보여 드리고 먼저 여쭙니다. 프로젝트 밖에는 절대 쓰지 않습니다.", "ファイルを書いたりコマンドを実行する前に、変更点を色付きで見せて確認します。プロジェクトの外には書き込みません。", "写文件或执行命令前，会用彩色差异显示改动并先问你。绝不会写到项目之外。", "Muestra un diff en color y pregunta antes de escribir un archivo o ejecutar un comando. Nunca escribe fuera de tu proyecto.", "Zeigt farbige Änderungen und fragt, bevor es eine Datei schreibt oder einen Befehl ausführt. Schreibt nie außerhalb deines Projekts.", "Affiche un diff en couleur et demande avant d'écrire un fichier ou de lancer une commande. N'écrit jamais hors de votre projet."],
+        "pricing.eyebrow": ["Get extra", "extra 받기", "extraを入手", "获取 extra", "Obtener extra", "extra holen", "Obtenir extra"],
+        "pricing.h2": ["Free while extra is in beta.", "베타 기간에는 무료입니다.", "ベータ期間中は無料です。", "测试期间免费。", "Gratis durante la beta.", "Kostenlos während der Beta.", "Gratuit pendant la bêta."],
+        "pricing.intro": ["extra is free while it's in beta. Every feature is included. Some things may still break — tell us and we fix them. Leave your email and we'll let you know when there's a new version.", "extra는 베타 기간에 무료이고 모든 기능이 포함됩니다. 아직 문제가 있을 수 있으니 알려 주시면 고칩니다. 이메일을 남기시면 새 버전이 나올 때 알려드립니다.", "extraはベータ期間中は無料で、すべての機能が含まれます。不具合が残っているかもしれません。報告いただければ直します。メールを残せば新バージョンをお知らせします。", "extra 在测试期间免费，包含全部功能。可能还有问题，告诉我们就会修复。留下邮箱，有新版本时通知你。", "extra es gratis durante la beta, con todas las funciones. Puede que algo falle; dínoslo y lo arreglamos. Deja tu correo y te avisamos cuando haya una nueva versión.", "extra ist während der Beta kostenlos, mit allen Funktionen. Manches kann noch kaputtgehen – sag uns Bescheid, wir beheben es. Hinterlass deine E-Mail für neue Versionen.", "extra est gratuit pendant la bêta, toutes fonctions incluses. Des choses peuvent casser — dites-le-nous. Laissez votre e-mail pour être prévenu des nouvelles versions."],
+    "plan.free": ["Free", "무료", "無料", "免费", "Gratis", "Kostenlos", "Gratuit"],
+    "plan.month": ["/ month", "/ 월", "/ 月", "/ 月", "/ mes", "/ Monat", "/ mois"],
+    "f1": ["Local model in your terminal", "터미널용 로컬 모델", "ターミナル用ローカルモデル", "终端里的本地模型", "Modelo local en tu terminal", "Lokales Modell im Terminal", "Modèle local dans votre terminal"],
+    "p1": ["Everything in Free", "무료의 모든 기능", "無料プランのすべて", "包含免费版全部内容", "Todo lo de Gratis", "Alles aus Kostenlos", "Tout le forfait Gratuit"],
+    "btn.download": ["Download", "다운로드", "ダウンロード", "下载", "Descargar", "Herunterladen", "Télécharger"],
+    "btn.waitlist": ["Join the waitlist", "대기 명단에 등록", "ウェイトリストに登録", "加入候补名单", "Unirme a la lista de espera", "Auf die Warteliste", "Rejoindre la liste d'attente"],
+    "toast.dl": ["Downloads open at launch.", "출시 때 다운로드가 열립니다.", "ダウンロードは発売時に開始します。", "上线后开放下载。", "Las descargas se abren en el lanzamiento.", "Downloads gibt es zum Start.", "Téléchargements disponibles au lancement."],
+    "toast.plus": ["Plus opens at launch.", "Plus는 출시 때 열립니다.", "Plusは発売時に開始します。", "Plus 将在上线时开放。", "Plus se abre en el lanzamiento.", "Plus startet zum Launch.", "Plus ouvre au lancement."],
+    "fa.h1": ["Runs on your computer", "내 컴퓨터에서 실행", "自分のパソコンで動く", "在你的电脑上运行", "Se ejecuta en tu ordenador", "Läuft auf deinem Computer", "Tourne sur votre ordinateur"],
+    "fa.p1": ["The model answers from your own machine. Your sessions are stored there too.", "모델은 내 컴퓨터에서 답합니다. 작업 기록도 거기에 저장됩니다.", "モデルは自分のパソコンから答えます。作業の記録もそこに保存されます。", "模型在你自己的电脑上作答，会话记录也保存在那里。", "El modelo responde desde tu propio equipo. Tus sesiones también se guardan ahí.", "Das Modell antwortet von deinem Rechner. Deine Sitzungen bleiben auch dort.", "Le modèle répond depuis votre machine. Vos sessions y sont stockées aussi."],
+    "fa.h2": ["No usage limit", "사용 한도 없음", "利用上限なし", "没有用量上限", "Sin límite de uso", "Kein Nutzungslimit", "Aucune limite d'utilisation"],
+    "fa.p2": ["It runs on your own computer, so there is no quota to run out of. Let it work through the night on a long task.", "내 컴퓨터에서 돌아가니 바닥날 사용량이 없습니다. 긴 작업은 밤새 맡겨 두셔도 됩니다.", "自分のパソコンで動くので、使い切る上限がありません。長い作業は一晩任せておけます。", "它在你自己的电脑上运行，没有会用完的额度。长任务可以让它通宵干。", "Se ejecuta en tu propio ordenador, así que no hay cuota que se agote. Déjalo trabajar toda la noche en una tarea larga.", "Es läuft auf deinem eigenen Rechner, also gibt es kein Kontingent, das ausgehen kann. Lass es über Nacht an einer langen Aufgabe arbeiten.", "Il tourne sur votre ordinateur, donc aucun quota à épuiser. Laissez-le travailler toute la nuit sur une longue tâche."],
+    "fa.h3": ["Open model inside", "공개 모델 기반", "オープンモデル採用", "内置开源模型", "Modelo abierto por dentro", "Offenes Modell im Kern", "Un modèle ouvert à l'intérieur"],
+    "fa.p3": ["Built on an Apache 2.0 licensed 8B model, so what runs on your machine is yours.", "Apache 2.0 라이선스의 8B 모델 기반이라, 내 컴퓨터에서 도는 건 온전히 내 것입니다.",
+      "Apache 2.0ライセンスの8Bモデルがベースなので、手元で動くものはあなたのものです。", "基于 Apache 2.0 许可的 8B 模型，在你电脑上运行的就是你的。",
+      "Basado en un modelo de 8B con licencia Apache 2.0: lo que corre en tu equipo es tuyo.", "Basiert auf einem 8B-Modell unter Apache 2.0 – was auf deinem Rechner läuft, gehört dir.",
+      "Basé sur un modèle 8B sous licence Apache 2.0 : ce qui tourne chez vous vous appartient."],
+    "foot": ["local AI with modules", "모듈을 붙이는 로컬 AI", "モジュール付きローカルAI", "带模块的本地 AI", "IA local con módulos", "Lokale KI mit Modulen", "IA locale avec modules"],
+    "cmd1": ["Open extra here; from your home folder it lists recent folders to pick", "여기서 extra 열기. 홈 폴더에서 열면 최근 폴더 목록에서 고릅니다", "ここでextraを開く。ホームフォルダからなら最近のフォルダ一覧から選べます", "在这里打开 extra；在主文件夹打开时会列出最近的文件夹供选择", "Abre extra aquí; desde tu carpeta personal muestra carpetas recientes para elegir", "extra hier öffnen; im Home-Ordner zeigt es zuletzt genutzte Ordner zur Auswahl", "Ouvre extra ici ; depuis votre dossier personnel, il liste les dossiers récents"],
+    "cmd2": ["Start a new long task on the whole project", "프로젝트 전체를 대상으로 새로운 긴 작업을 시작합니다", "プロジェクト全体で新しい長い作業を始めます", "针对整个项目开始一个新的长任务", "Empieza una tarea larga nueva sobre todo el proyecto", "Startet eine neue lange Aufgabe für das ganze Projekt", "Lance une nouvelle tâche longue sur tout le projet"],
+    "cmd4": ["New session, quit, stop the current step", "새 작업, 끝내기, 지금 단계 멈추기", "新しいセッション・終了・今の手順を止める", "新会话、退出、停止当前步骤", "Nueva sesión, salir, parar el paso actual", "Neue Sitzung, beenden, aktuellen Schritt stoppen", "Nouvelle session, quitter, arrêter l'étape en cours"],
+    "nav.results": ["Results", "결과", "結果", "结果", "Resultados", "Ergebnisse", "Résultats"],
+    "res.eyebrow": ["Measured", "측정 결과", "測定結果", "实测结果", "Medido", "Gemessen", "Mesuré"],
+    "res.h2": ["More tries with real errors. More tests passed.", "실제 오류로 다시 고칠수록, 더 많은 시험을 통과합니다.", "実際のエラーで直すほど、より多くのテストに合格します。", "根据真实报错反复修改，通过的测试越多。", "Más intentos con errores reales. Más pruebas superadas.", "Mehr Versuche mit echten Fehlern. Mehr bestandene Tests.", "Plus d'essais avec de vraies erreurs. Plus de tests réussis."],
+    "res.intro": ["We gave the 8B model extra runs on (Ministral 3 8B) 292 coding tasks from MBPP+ and HumanEval+. After each attempt, extra ran its code against one visible test, read the real error and fixed the code — up to 10 times. Every final answer was then scored against hidden tests the model never saw.", "extra가 쓰는 8B 모델(Ministral 3 8B)에게 MBPP+와 HumanEval+의 코딩 문제 292개를 풀게 했습니다. 시도할 때마다 extra는 보이는 시험 하나로 코드를 실제로 돌려 보고, 진짜 오류를 읽고 코드를 고쳤습니다. 이것을 최대 10번까지 했습니다. 마지막 답은 모델이 한 번도 보지 못한 숨겨진 시험으로 채점했습니다.", "extraが使う8Bモデル（Ministral 3 8B）に、MBPP+とHumanEval+のコーディング問題292問を解かせました。試すたびにextraは見えるテスト1つでコードを実際に実行し、本当のエラーを読んで直しました。これを最大10回行いました。最終的な答えは、モデルが見たことのない隠しテストで採点しました。", "我们让 extra 使用的 8B 模型（Ministral 3 8B）解答 MBPP+ 和 HumanEval+ 中的 292 道编程题。每次尝试后，extra 用一个可见测试实际运行代码，读取真实报错并修改代码，最多 10 次。最终答案用模型从未见过的隐藏测试评分。", "Dimos al modelo de 8B que usa extra (Ministral 3 8B) 292 tareas de programación de MBPP+ y HumanEval+. Tras cada intento, extra ejecutó su código con una prueba visible, leyó el error real y corrigió el código, hasta 10 veces. Cada respuesta final se calificó con pruebas ocultas que el modelo nunca vio.", "Wir gaben dem 8B-Modell, auf dem extra läuft (Ministral 3 8B), 292 Programmieraufgaben aus MBPP+ und HumanEval+. Nach jedem Versuch führte extra den Code mit einem sichtbaren Test aus, las den echten Fehler und korrigierte den Code – bis zu 10-mal. Jede Endantwort wurde mit versteckten Tests bewertet, die das Modell nie gesehen hat.", "Nous avons donné au modèle 8B d'extra (Ministral 3 8B) 292 tâches de code issues de MBPP+ et HumanEval+. Après chaque essai, extra a exécuté son code avec un test visible, lu la vraie erreur et corrigé le code, jusqu'à 10 fois. Chaque réponse finale a été notée avec des tests cachés que le modèle n'avait jamais vus."],
+    "r1": ["Base model", "기본 모델", "ベースモデル", "基础模型", "Modelo base", "Basismodell", "Modèle de base"],
+    "r3": ["+ all extra modules", "+ extra 모듈 전부", "+ extraの全モジュール", "+ 全部 extra 模块", "+ todos los módulos extra", "+ alle extra-Module", "+ tous les modules extra"],
+    "st1": ["points from the first try to 10 tries, with the same model", "점 상승 — 같은 모델로, 첫 시도에서 10번 시도까지", "ポイント上昇 — 同じモデルで、1回目から10回まで", "分提升 —— 同一个模型，从第 1 次到 10 次", "puntos del primer intento a 10 intentos, con el mismo modelo", "Punkte vom ersten bis zum zehnten Versuch, mit demselben Modell", "points du premier essai à 10 essais, avec le même modèle"],
+    "st2": ["tries per task on average — most tasks finish in one or two", "번 — 문제당 평균 시도 횟수. 대부분 한두 번에 끝납니다", "回 — 1問あたりの平均試行回数。ほとんどは1〜2回で終わります", "次 —— 每题平均尝试次数，大多数一两次就完成", "intentos por tarea de media; la mayoría termina en uno o dos", "Versuche pro Aufgabe im Schnitt – die meisten sind nach ein bis zwei fertig", "essais par tâche en moyenne ; la plupart se terminent en un ou deux"],
+    "st3": ["tasks passed the visible test but failed hidden ones, so there was no error left to fix", "개 문제는 보이는 시험은 통과했지만 숨겨진 시험에서 틀렸습니다. 고칠 오류가 보이지 않았기 때문입니다", "問は見えるテストに合格したのに隠しテストで不合格でした。直すべきエラーが見えなかったためです", "道题通过了可见测试却没通过隐藏测试，因为已经没有可修的报错", "tareas pasaron la prueba visible pero fallaron las ocultas: no quedaba ningún error que corregir", "Aufgaben bestanden den sichtbaren Test, aber nicht die versteckten – es gab keinen Fehler mehr zu beheben", "tâches ont passé le test visible mais échoué aux tests cachés : plus aucune erreur à corriger"],
+    "res.note": ["Measured in November 2026 on Ministral 3 8B Instruct with extra's method. Hidden tests from EvalPlus. Large-model scores from the EvalPlus leaderboard (evalplus.github.io).", "2026년 11월, extra 방식으로 Ministral 3 8B Instruct에서 측정했습니다. 숨겨진 시험은 EvalPlus 것이고, 대형 모델 점수는 EvalPlus 순위표(evalplus.github.io)에서 가져왔습니다.", "2026年11月、extraの方法でMinistral 3 8B Instructを測定しました。隠しテストはEvalPlus、大型モデルのスコアはEvalPlusリーダーボード（evalplus.github.io）のものです。", "2026 年 11 月用 extra 的方法在 Ministral 3 8B Instruct 上测量。隐藏测试来自 EvalPlus，大型模型分数来自 EvalPlus 排行榜（evalplus.github.io）。", "Medido en noviembre de 2026 con Ministral 3 8B Instruct y el método de extra. Pruebas ocultas de EvalPlus. Puntuaciones de modelos grandes del ranking de EvalPlus (evalplus.github.io).", "Gemessen im November 2026 mit Ministral 3 8B Instruct und der Methode von extra. Versteckte Tests von EvalPlus. Werte großer Modelle aus der EvalPlus-Bestenliste (evalplus.github.io).", "Mesuré en novembre 2026 sur Ministral 3 8B Instruct avec la méthode d'extra. Tests cachés d'EvalPlus. Scores des grands modèles issus du classement EvalPlus (evalplus.github.io)."],
+    "cmd0": ["Pick up a task Claude started: lists the handoff notes and sessions, Enter takes the newest", "Claude가 하던 일 이어받기: 인계 메모와 세션 목록이 뜨고, Enter를 누르면 가장 최근 것을 이어받습니다", "Claudeの作業を引き継ぐ：引き継ぎメモとセッションの一覧が出て、Enterで最新のものを引き継ぎます", "接手 Claude 的任务：列出交接笔记和会话，按回车接手最新的", "Retoma una tarea de Claude: muestra las notas y sesiones; Intro toma la más reciente", "Eine Aufgabe von Claude übernehmen: zeigt Übergabenotizen und Sitzungen, Enter nimmt die neueste", "Reprendre une tâche de Claude : liste les notes et sessions, Entrée prend la plus récente"],
+    "m9": ["Reads where your last assistant stopped in this folder and continues the same task without starting over.", "이 폴더에서 직전 AI가 어디까지 했는지 읽고, 처음부터 다시 하지 않고 같은 작업을 이어 갑니다.", "このフォルダで前のアシスタントがどこまで進めたかを読み、最初からやり直さずに同じ作業を続けます。", "读取上一个助手在此文件夹做到哪里，不从头开始，直接接着做同一个任务。", "Lee dónde se detuvo tu último asistente en esta carpeta y continúa la misma tarea sin empezar de cero.", "Liest, wo dein letzter Assistent in diesem Ordner aufgehört hat, und setzt dieselbe Aufgabe fort, ohne neu anzufangen.", "Lit où votre dernier assistant s'est arrêté dans ce dossier et poursuit la même tâche sans tout recommencer."],
+    "m10": ["Installs the packages and downloads the files it needs, after you approve each one with y/n.", "필요한 패키지를 설치하고 파일을 내려받습니다. 하나하나 y/n으로 승인하신 뒤에 진행합니다.", "必要なパッケージをインストールし、ファイルをダウンロードします。一つずつ y/n で承認してから進めます。", "自己安装需要的软件包、下载需要的文件，每一项都在你用 y/n 同意后进行。", "Instala los paquetes y descarga los archivos que necesita, después de que apruebes cada uno con y/n.", "Installiert benötigte Pakete und lädt Dateien herunter, nachdem du jedes Mal mit y/n zugestimmt hast.", "Installe les paquets et télécharge les fichiers nécessaires, après votre accord y/n pour chacun."],
+    "nav.handoff": ["Handoff", "인계", "引き継ぎ", "交接", "Relevo", "Übergabe", "Relais"],
+    "team.eyebrow": ["Teamwork with Claude", "Claude와 함께 일하기", "Claudeとチームで", "与 Claude 协作", "Trabajo en equipo con Claude", "Teamarbeit mit Claude", "En équipe avec Claude"],
+    "team.h2": ["Claude never waits. extra takes the slow part.", "Claude는 기다리지 않습니다. 오래 걸리는 일은 extra가 맡습니다.", "Claudeは待ちません。時間のかかる部分はextraが担当します。", "Claude 从不等待，慢活交给 extra。", "Claude nunca espera. extra se encarga de lo lento.", "Claude wartet nie. extra übernimmt den langsamen Teil.", "Claude n'attend jamais. extra prend la partie lente."],
+    "team.intro": ["When Claude has a lot to do, it hands a self-contained problem to extra in the background and keeps working. extra solves it in a private copy of your project: it tries, runs the tests, reads why they fail and tries another way until they pass. Claude reviews the result, then uses it or sends it back with the reason. Your Claude usage lasts longer.",
+      "Claude가 할 일이 많을 때, 따로 떨어진 문제 하나를 뒤에서 extra에게 넘기고 자기 일을 계속합니다. extra는 프로젝트 복사본에서 시도하고, 테스트를 돌리고, 왜 실패했는지 읽고, 통과할 때까지 다른 방법을 찾습니다. Claude는 결과를 검토해서 쓰거나 이유와 함께 다시 보냅니다. Claude 사용량이 더 오래 갑니다.",
+      "Claudeは忙しいとき、独立した問題を一つ裏でextraに渡し、自分の作業を続けます。extraはプロジェクトのコピーで試し、テストを実行し、失敗の理由を読み、通るまで別の方法を探します。Claudeは結果を確認して使うか、理由を添えて差し戻します。Claudeの利用枠が長持ちします。",
+      "Claude 忙不过来时，会把一个独立的问题在后台交给 extra，自己继续干活。extra 在项目副本里尝试、跑测试、读失败原因，换方法直到通过。Claude 审查结果后采用，或附上原因退回。你的 Claude 用量能撑得更久。",
+      "Cuando Claude tiene mucho que hacer, pasa un problema independiente a extra en segundo plano y sigue trabajando. extra lo resuelve en una copia privada del proyecto: prueba, ejecuta los tests, lee por qué fallan y busca otra vía hasta que pasan. Claude revisa el resultado y lo usa o lo devuelve con el motivo. Tu uso de Claude dura más.",
+      "Wenn Claude viel zu tun hat, gibt es ein abgeschlossenes Problem im Hintergrund an extra und arbeitet weiter. extra löst es in einer privaten Kopie deines Projekts: probieren, Tests ausführen, Fehlergründe lesen, anderen Weg versuchen, bis sie bestehen. Claude prüft das Ergebnis und übernimmt es oder schickt es mit Begründung zurück. Dein Claude-Kontingent reicht länger.",
+      "Quand Claude a beaucoup à faire, il confie un problème autonome à extra en arrière-plan et continue. extra le résout dans une copie privée du projet : il essaie, lance les tests, lit pourquoi ils échouent et tente autre chose jusqu'à ce qu'ils passent. Claude vérifie le résultat, puis l'utilise ou le renvoie avec la raison. Votre quota Claude dure plus longtemps."],
+    "team.c1": ["Claude hands over one problem with a command that checks it", "Claude가 문제 하나를 확인 명령과 함께 넘깁니다", "Claudeが確認コマンド付きで問題を一つ渡します", "Claude 交出一个问题，并附上检查命令", "Claude entrega un problema con un comando que lo comprueba", "Claude übergibt ein Problem mit einem Prüfbefehl", "Claude confie un problème avec une commande qui le vérifie"],
+    "team.c2": ["Claude reviews what extra changed and how it was tested", "Claude가 extra가 바꾼 내용과 시험 결과를 검토합니다", "extraの変更内容とテスト結果をClaudeが確認します", "Claude 审查 extra 改了什么、怎么测的", "Claude revisa qué cambió extra y cómo se probó", "Claude prüft, was extra geändert und wie es getestet hat", "Claude vérifie ce qu'extra a changé et comment c'est testé"],
+    "team.c3": ["Use it. Changes merge with Claude's own edits; overlaps are never forced", "적용합니다. Claude의 수정과 자동으로 합치고, 겹치면 억지로 덮지 않습니다", "採用します。Claudeの編集と自動で統合し、重なる部分は上書きしません", "采用。与 Claude 的修改自动合并，冲突绝不强行覆盖", "Úsalo. Se combina con las ediciones de Claude; nunca se fuerzan conflictos", "Übernehmen. Wird mit Claudes Änderungen zusammengeführt; Konflikte werden nie erzwungen", "Utilisez-le. Fusion avec les modifications de Claude ; jamais de conflit forcé"],
+    "team.c4": ["Or send it back with what is wrong", "또는 무엇이 틀렸는지 적어 다시 보냅니다", "または問題点を書いて差し戻します", "或写明问题后退回", "O devuélvelo diciendo qué está mal", "Oder mit Begründung zurückschicken", "Ou renvoyez-le en disant ce qui ne va pas"],
+    "hand.eyebrow": ["Works with Claude Code", "Claude Code와 함께", "Claude Codeと連携", "与 Claude Code 配合", "Funciona con Claude Code", "Arbeitet mit Claude Code", "Fonctionne avec Claude Code"],
+    "hand.h2": ["Claude leaves a note. extra picks it up.", "Claude가 메모를 남기면, extra가 이어받습니다.", "Claudeがメモを残し、extraが引き継ぎます。", "Claude 留下笔记，extra 接着干。", "Claude deja una nota. extra la retoma.", "Claude hinterlässt eine Notiz. extra macht weiter.", "Claude laisse une note. extra la reprend."],
+    "hand.intro": ["Add the extra-handoff skill to Claude Code. While Claude works, it keeps .extra/handoff.md up to date: the goal, what is done, what is in progress and what is next. When Claude hits its limit, extra continue starts from that note.", "Claude Code에 extra-handoff 스킬을 넣으십시오. Claude는 일하는 동안 .extra/handoff.md에 목표, 끝낸 일, 하고 있던 일, 다음 할 일을 계속 적어 둡니다. Claude가 한도에 걸리면 extra continue가 그 메모부터 시작합니다.", "Claude Codeにextra-handoffスキルを追加してください。Claudeは作業中、.extra/handoff.mdに目標・完了したこと・進行中のこと・次にやることを書き続けます。上限に達したら、extra continueがそのメモから始めます。", "把 extra-handoff 技能加到 Claude Code。Claude 工作时会持续更新 .extra/handoff.md：目标、已完成、进行中和下一步。Claude 达到上限时，extra continue 就从这份笔记开始。", "Añade la skill extra-handoff a Claude Code. Mientras trabaja, Claude mantiene al día .extra/handoff.md: el objetivo, lo hecho, lo que está en curso y lo siguiente. Cuando Claude llega a su límite, extra continue empieza desde esa nota.", "Füge Claude Code den Skill extra-handoff hinzu. Während Claude arbeitet, hält es .extra/handoff.md aktuell: Ziel, Erledigtes, Laufendes und nächste Schritte. Erreicht Claude sein Limit, startet extra continue bei dieser Notiz.", "Ajoutez la compétence extra-handoff à Claude Code. Pendant son travail, Claude tient .extra/handoff.md à jour : l'objectif, ce qui est fait, ce qui est en cours et la suite. Quand Claude atteint sa limite, extra continue repart de cette note."],
+    "hand.s1": ["Save the skill below as ~/.claude/skills/extra-handoff/SKILL.md", "아래 스킬을 ~/.claude/skills/extra-handoff/SKILL.md로 저장하십시오", "下のスキルを ~/.claude/skills/extra-handoff/SKILL.md として保存します", "把下面的技能保存为 ~/.claude/skills/extra-handoff/SKILL.md", "Guarda la skill de abajo como ~/.claude/skills/extra-handoff/SKILL.md", "Speichere den Skill unten als ~/.claude/skills/extra-handoff/SKILL.md", "Enregistrez la compétence ci-dessous dans ~/.claude/skills/extra-handoff/SKILL.md"],
+    "hand.s2": ["Work with Claude as usual. The note stays current as it works.", "평소처럼 Claude와 작업하십시오. 메모는 일하는 동안 계속 최신으로 유지됩니다.", "いつも通りClaudeと作業します。メモは作業中ずっと最新に保たれます。", "照常和 Claude 一起工作，笔记会随时保持最新。", "Trabaja con Claude como siempre. La nota se mantiene al día.", "Arbeite wie gewohnt mit Claude. Die Notiz bleibt aktuell.", "Travaillez avec Claude comme d'habitude. La note reste à jour."],
+    "hand.s3": ["When the limit hits, run extra continue in the same folder.", "한도에 걸리면 같은 폴더에서 extra continue를 실행하십시오.", "上限に達したら、同じフォルダで extra continue を実行します。", "达到上限时，在同一个文件夹运行 extra continue。", "Cuando llegue el límite, ejecuta extra continue en la misma carpeta.", "Wenn das Limit kommt, starte extra continue im selben Ordner.", "Quand la limite tombe, lancez extra continue dans le même dossier."],
+    "hand.copy": ["Copy skill", "스킬 복사", "スキルをコピー", "复制技能", "Copiar skill", "Skill kopieren", "Copier"],
+    "hand.copied": ["Copied. Paste it into the file.", "복사했습니다. 파일에 붙여 넣으십시오.", "コピーしました。ファイルに貼り付けてください。", "已复制，粘贴到文件里即可。", "Copiado. Pégalo en el archivo.", "Kopiert. Füge es in die Datei ein.", "Copié. Collez-le dans le fichier."],
+  };
+  const LANGS = ["en", "ko", "ja", "zh", "es", "de", "fr"];
+  let lang = "en";
+  try { lang = localStorage.getItem("extra-lang") || ""; } catch (e) { lang = ""; }
+  if (!LANGS.includes(lang)) lang = LANGS.find((l) => (navigator.language || "en").toLowerCase().startsWith(l)) || "en";
+  const tr = (k) => (T[k] || [k])[LANGS.indexOf(lang)] || (T[k] || [k])[0];
+  function applyLang() {
+    document.documentElement.lang = lang === "zh" ? "zh-Hans" : lang;
+    document.querySelectorAll("[data-i]").forEach((el) => {
+      const v = tr(el.dataset.i);
+      if (el.hasAttribute("data-html")) el.innerHTML = v; else el.textContent = v;
+    });
+    document.querySelectorAll("[data-ph]").forEach((el) => { el.placeholder = tr(el.dataset.ph); });
+    if (window.onLangChange) window.onLangChange();
+    document.getElementById("lang").value = lang;
+  }
+  document.getElementById("lang").addEventListener("change", (e) => {
+    lang = e.target.value;
+    try { localStorage.setItem("extra-lang", lang); } catch (err) {}
+    applyLang();
+  });
+  applyLang();
+
+  // copy the handoff skill (falls back to selecting the text if the clipboard is refused)
+  document.getElementById('copyskill').addEventListener('click', () => {
+    const t = document.getElementById('skilltext');
+    const done = () => { toast.textContent = tr('hand.copied'); toast.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => { toast.hidden = true; }, 2000); };
+    navigator.clipboard.writeText(t.textContent).then(done).catch(() => { const r = document.createRange(); r.selectNodeContents(t); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); });
+  });
+  document.getElementById('copyskill2').addEventListener('click', () => {
+    const t = document.getElementById('skilltext2');
+    navigator.clipboard.writeText(t.textContent).then(() => { toast.textContent = tr('hand.copied'); toast.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => { toast.hidden = true; }, 2000); })
+      .catch(() => { const r = document.createRange(); r.selectNodeContents(t); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); });
+  });
+
+  // ---------- motion ----------
+  (function motion() {
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const targets = document.querySelectorAll("section > .wrap");
+    const bars = [...document.querySelectorAll(".bars .fill")].map((f) => { const w = f.style.width; if (!reduce) f.style.width = "0%"; return [f, w]; });
+    const nums = [...document.querySelectorAll(".stats b")];
+    if (reduce || !("IntersectionObserver" in window)) {
+      document.querySelectorAll(".reveal-term .tl").forEach((l) => l.classList.add("on"));
+      return;
+    }
+    targets.forEach((t) => t.classList.add("rv"));
+    const countUp = (el) => {
+      const m = el.textContent.match(/^([+−-]?)([\d.]+)(.*)$/);
+      if (!m) return;
+      const [_, sign, num, rest] = m, end = parseFloat(num), dec = (num.split(".")[1] || "").length, t0 = performance.now();
+      const step = (t) => { const k = Math.min(1, (t - t0) / 1100); el.textContent = sign + (end * (1 - Math.pow(1 - k, 3))).toFixed(dec) + rest; if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    };
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const el = e.target;
+        io.unobserve(el);
+        if (el.classList.contains("rv")) el.classList.add("in");
+        if (el.classList.contains("reveal-term")) {
+          el.querySelectorAll(".tl").forEach((l, i) => setTimeout(() => l.classList.add("on"), 120 + i * 140));
+        }
+        if (el.classList.contains("bars")) bars.forEach(([f, w], i) => setTimeout(() => { f.style.width = w; }, 150 + i * 120));
+        if (el.classList.contains("stats")) nums.forEach(countUp);
+      }
+    }, { threshold: 0.18 });
+    targets.forEach((t) => io.observe(t));
+    document.querySelectorAll(".reveal-term, .bars, .stats").forEach((t) => io.observe(t));
+  })();
+  // planned-launch buttons: say so in the page instead of pretending to download
+  const toast = document.getElementById('toast');
+  document.querySelectorAll('[data-toast]').forEach((b) => b.addEventListener('click', () => {
+    toast.textContent = tr(b.dataset.toast); toast.hidden = false;
+    clearTimeout(toast._t); toast._t = setTimeout(() => { toast.hidden = true; }, 2200);
+  }));
+</script>
