@@ -1256,7 +1256,6 @@ class ThinkView:
             self.head = head; self.box.head = head
             if UI.on:
                 UI.set_box([head])
-                UI.set_status(f"{self.color}{frames[i % 10]}{R} {D}{self.word.lower()}… {el:0.0f}s{R}")   # 상태줄에도 (확실히 보이게)
             else:
                 sys.stdout.write(f"\r{head}\x1b[K"); sys.stdout.flush()
             i += 1
@@ -1266,8 +1265,6 @@ class ThinkView:
         if self._spin_on and not self._first:
             self._first = True
             self._spin_on = False
-            if UI.on:
-                UI.set_status("")
             try: self._th.join(0.3)
             except Exception: pass
             self.head = f"{self.color}◆ {self.word}…{R}"; self.box.head = self.head
@@ -1292,8 +1289,6 @@ class ThinkView:
         return len(lines) >= 6 and len(set(lines)) <= 2
 
     def close(self):
-        if self._spin_on and UI.on:
-            UI.set_status("")
         self._spin_on = False
         self.box.close()
         lines = shown_lines(self.text)
