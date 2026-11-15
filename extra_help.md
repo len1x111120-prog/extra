@@ -119,6 +119,7 @@ It installs what it needs itself (pip in a .venv, npm, brew, git clone) and pref
   - webapp-testing — test web apps for real with Playwright in headless Chrome (from anthropics/skills, Apache 2.0)
   - systematic-debugging — find the root cause before fixing (from obra/superpowers, MIT)
   - verification-before-completion — run the check and read its output before saying it is done (from obra/superpowers, MIT)
+- When you start a build task, extra asks which skills to use — type numbers (e.g. 1 2), `all`, `none`, or Enter for the suggested ones.
 - See them: /set → 4 Skills, or /skills. Use one for your next request: /skill <name>. Adding your own skills is not available.
 
 ## Speed settings

@@ -211,6 +211,39 @@ def pick_skills(task_text, limit=2):
     return [n for _, n in scored[:limit]]
 
 
+def pick_skills_menu(task_text):
+    """작업을 시작할 때 쓸 스킬을 번호로 복수 선택한다 (사용자 11/16: 스킬이 확실히 적용되게).
+    Enter=추천(자동으로 맞는 것), 번호들(예: 1 2 4)=그 스킬들, all=전부, none=안 씀. 백그라운드에선 자동."""
+    sks = list(load_skills().values())
+    if not sks:
+        return []
+    auto = set(pick_skills(task_text, limit=99))   # 키워드로 맞는 것 전부
+    if HEADLESS or not sys.stdin.isatty():
+        return [v["name"] for v in sks if v["name"] in auto]
+    print(f"\n {P}◆{R} {W}Which skills should extra use?{R} {D}(expert instructions it follows){R}")
+    for i, v in enumerate(sks, 1):
+        sug = f" {G}· suggested{R}" if v["name"] in auto else ""
+        print(f" {W}{i}{R}  {pad(v['name'], 30)} {D}{v['description'][:60]}{R}{sug}")
+    nums = " ".join(str(i) for i, v in enumerate(sks, 1) if v["name"] in auto) or "none"
+    print(f" {D}numbers (e.g. 1 2) · all · none · Enter = suggested ({nums}){R}")
+    try:
+        a = read_answer(f"{P} › {R}").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print(); a = ""
+    if a == "" :
+        chosen = [v["name"] for v in sks if v["name"] in auto]
+    elif a in ("all", "a", "전부", "다"):
+        chosen = [v["name"] for v in sks]
+    elif a in ("none", "n", "안", "없"):
+        chosen = []
+    else:
+        idx = {int(x) for x in re.findall(r"\d+", a)}
+        chosen = [v["name"] for i, v in enumerate(sks, 1) if i in idx]
+    if chosen:
+        print(f" {P}✦ using skills:{R} {W}{', '.join(chosen)}{R}")
+    return chosen
+
+
 def skill_text(name):
     sk = load_skills().get(name)
     if not sk:
@@ -1637,8 +1670,7 @@ def one_turn(msgs, user_text):
             user_text = user_text + "\n\n[The user clarified what they want: " + extra_ask + "]"
         if CWD != HOME:   # 홈에서 시작 = 아직 뭘 할지 안 정한 것 → 폴더를 훑지 않는다 (사용자 11/15)
             user_text = user_text + "\n\n[" + project_overview() + "]"
-        for name in pick_skills(orig_text):
-            print(f"{P}✦ using skill:{R} {W}{name}{R}")
+        for name in pick_skills_menu(orig_text):
             user_text += "\n\n" + skill_text(name)
             clog({"skill": name})
     msgs.append({"role": "user", "content": user_text})
