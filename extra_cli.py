@@ -1515,11 +1515,21 @@ CLARIFY_SYS = (
     "\"add dark mode to styles.css\" -> CLEAR.  \"make me an app\" -> ASK (what kind).  \"build a game\" -> ASK (which game).")
 
 
+# 만들기/작업 요청처럼 보이는 말에만 clarify 모델 호출 (인사·잡담·단순 질문은 호출 없이 바로 → 느려지지 않게)
+BUILD_INTENT = re.compile(
+    r"\b(make|build|create|write|add|implement|generate|design|set ?up|develop|code|refactor|convert|turn into|"
+    r"fix|debug|add a|build a|make a|create a)\b|게임|앱|사이트|웹|프로그램|스크립트|"
+    r"만들|짜 ?줘|짜줘|구현|추가|생성|개발|설계|고쳐|고치|바꿔|디자인", re.I)
+
+
 def ask_intent(user_text):
     """새 작업을 받으면 먼저 '무엇을 원하는가'를 생각하고, 구체적이지 않으면 선택지+직접 입력으로 묻는다 (사용자 11/15).
-    돌아오는 값: 사용자가 고르거나 적은 보충 설명(문자열), 또는 None(물을 필요 없음 / 물을 수 없음)."""
+    돌아오는 값: 사용자가 고르거나 적은 보충 설명(문자열), 또는 None(물을 필요 없음 / 물을 수 없음).
+    인사·잡담·단순 질문에는 비싼 모델 호출을 하지 않는다 (11/16: '안녕' 에 20초 걸렸다)."""
     if HEADLESS or not sys.stdin.isatty() or len(user_text) > 280:
         return None   # 백그라운드이거나, 이미 충분히 긴(구체적인) 요청이면 묻지 않는다
+    if not BUILD_INTENT.search(user_text):
+        return None   # 만들기/작업 요청이 아니면 (인사·질문 등) 그냥 평소대로 답한다
     tv = ThinkView("Understanding")   # 머리글 스피너만 돈다 (내용은 흘리지 않는다 → 끝에 사라지지 않게)
     out = ""
     try:
