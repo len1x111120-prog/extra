@@ -2127,17 +2127,60 @@ def recent_folders(limit=8):
     return [c for c, _ in keep[:limit]]
 
 
+def claude_jobs_menu():
+    """클로드가 extra 에게 넘긴 작업(백그라운드 job)을 모아 보여 주고 골라서 보기/적용 — 같이하기 (사용자 11/16).
+    job 이 없으면 사용법을 알려 주고 'folder' 를 돌려줘 폴더 고르기로 넘어간다."""
+    jobs, seen = [], set()
+    for folder in ([str(CWD)] if CWD != HOME else []) + recent_folders(12):
+        if folder in seen:
+            continue
+        seen.add(folder)
+        try:
+            for jid, st, when, task, frm in J.list_jobs(Path(folder)):
+                jobs.append((folder, jid, st, when, task))
+        except Exception:
+            pass
+    if not jobs:
+        print(f"\n {B}Work with Claude{R}")
+        print(f" {D}While Claude Code keeps working, it can hand a self-contained piece to extra:{R}")
+        print(f"   {W}extra run \"task\" --test \"command\"{R}")
+        print(f" {D}extra solves it in the background; those jobs show up here to review ·{R} {W}extra show <id>{R} {D}·{R} {W}extra apply <id>{R}")
+        print(f" {D}No jobs yet.{R}")
+        return "folder"
+    print(f"\n {B}Jobs Claude handed to extra{R} {D}(newest first){R}")
+    for i, (folder, jid, st, when, task) in enumerate(jobs, 1):
+        c = G if st.startswith(("passed", "done")) else O if st.startswith("running") else E if st.startswith(("failed", "error", "stopped", "timeout")) else D
+        print(f" {W}{i}{R}  {c}{st:<18}{R} {D}{when:>7}  {jid}{R}  {task}")
+        print(f"      {D}{folder.replace(str(HOME), '~')}{R}")
+    print(f" {D}number = view it (then apply) · Enter = skip{R}")
+    try:
+        a = read_answer(f"{P} › {R}").strip()
+    except (EOFError, KeyboardInterrupt):
+        print(); return None
+    if a.isdigit() and 1 <= int(a) <= len(jobs):
+        folder, jid, st, when, task = jobs[int(a) - 1]
+        set_cwd(Path(folder))
+        print(J.show(Path(folder), jid))
+        try:
+            if read_answer(f"{P} apply these changes to the project? [y/N] › {R}").strip().lower().startswith("y"):
+                print(J.apply(Path(folder), jid))
+        except (EOFError, KeyboardInterrupt):
+            print()
+    return None
+
+
 def start_menu():
     """모델을 올린 뒤 무엇을 할지 번호로 고른다 (사용자 11/15): 1) 작업 이어받기 2) 폴더에서 일하기 3) 그냥 시작.
     이어받기를 고르면 이어받을 글을 돌려주고, 나머지는 None (대화형으로 바로 시작)."""
     in_project = CWD != HOME
     here = CWD.name
-    rows = [("Work with Claude", "continue a Claude handoff or pick up a Claude Code session"),
+    rows = [("Take over a Claude task", "Claude hit its limit — continue where it stopped (handoff or session)"),
+            ("Work with Claude", "review jobs Claude handed to extra while it keeps working"),
             (f"Work in this folder ({here})" if in_project else "Work in a folder",
              "start a new task here" if in_project else "choose a folder, or make one"),
             ("Just start", "skip this and start typing here" + (f" (~/{CWD.relative_to(HOME)})" if in_project and str(CWD).startswith(str(HOME)) else " (home folder)" if CWD == HOME else f" ({here})"))]
     print(f"\n {B}What do you want to do?{R}")
-    default = 2 if in_project else 1
+    default = 3 if in_project else 1
     for i, (label, desc) in enumerate(rows, 1):
         mark = f" {D}(Enter){R}" if i == default else ""
         print(f" {W}{i}{R}  {pad(label, 30)} {D}{desc}{R}{mark}")
@@ -2145,12 +2188,16 @@ def start_menu():
         a = read_answer(f"{P} › {R}").strip()
     except (EOFError, KeyboardInterrupt):
         print(); return None
-    choice = int(a) if a.isdigit() and 1 <= int(a) <= 3 else default
+    choice = int(a) if a.isdigit() and 1 <= int(a) <= 4 else default
     if choice == 1:
         return pick_session()
-    if choice == 2 and not in_project:
+    if choice == 2:
+        if claude_jobs_menu() == "folder" and not in_project:
+            pick_folder()
+        return None
+    if choice == 3 and not in_project:
         pick_folder()
-    return None   # 2(여기서 일하기) 또는 3(그냥 시작): 지금 폴더에서 바로 대화형 시작
+    return None   # 3(여기서 일하기) 또는 4(그냥 시작): 지금 폴더에서 바로 대화형 시작
 
 
 def pick_folder():
