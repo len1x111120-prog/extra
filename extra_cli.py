@@ -1826,7 +1826,7 @@ def pad(text, n):
     return out + " " * max(0, n - w)
 
 
-DEMO_MODE = False  # TEMP (녹화용 11/15): plain `extra` 도 가짜 작업을 보여 준다. 녹화 끝나면 False 로 되돌릴 것.
+DEMO_MODE = False  # True (또는 EXTRA_DEMO=1): 실제 작업 대신 가짜 예시 작업을 보여 준다 (스크린샷·데모용)
 
 
 def _demo_on():
