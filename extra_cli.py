@@ -1578,9 +1578,50 @@ def ask_intent(user_text):
     return a   # 직접 입력한 내용
 
 
+def is_chat(text):
+    """작업이 아니라 대화·단순 질문인가 (홈에서 빠르게 바로 답하기 위해). 11/16."""
+    t = str(text).strip()
+    if len(t) > 160 or BUILD_INTENT.search(t):
+        return False
+    if re.search(r"\b(file|folder|directory|run|test|error|bug|install|download|command|script|repo|project)\b", t, re.I):
+        return False
+    if re.search(r"파일|폴더|실행|읽어|열어|설치|다운|코드|스크립트|에러|버그|테스트|저장|지워|삭제", t):
+        return False
+    return True
+
+
+def chat_reply(msgs, sys_msg, user_text):
+    """생각·검증·도구 없이 한 번에 바로 답한다 (인사·잡담·단순 질문). 11/16: '안녕' 이 느려서."""
+    msgs.append({"role": "user", "content": user_text})
+    clog({"user": user_text, "chat": True})
+    sm = {"role": "system", "content": sys_msg["content"] +
+          "\n\n[This is casual conversation, not a task. Reply directly and briefly to the user. "
+          "Do NOT write <think>, do NOT make a plan, do NOT call tools. Just answer in the user's language.]"}
+    tick = Ticker("replying")
+    stream = AnswerStream()
+    first = False
+    answer = ""
+    for chunk in app.ollama_stream([sm] + app.fit_view(msgs), tools=False):
+        t = (chunk.get("message") or {}).get("content") or ""
+        if t:
+            if not first:
+                tick.stop(); first = True
+            answer += t
+            stream.feed(t)
+    tick.stop()
+    stream.close()
+    answer = app.THINK_RE.sub("", answer).strip()
+    if answer:
+        msgs.append({"role": "assistant", "content": answer})
+    print()
+
+
 def one_turn(msgs, user_text):
     sys_msg = {"role": "system", "content": system_prefix() + J.prompt_block(PROMPT_ROOT)}
     orig_text = user_text
+    if CWD == HOME and is_chat(orig_text):   # 홈 = 아직 작업 안 정함. 대화는 바로 답한다 (생각·도구 없이). 11/16
+        chat_reply(msgs, sys_msg, orig_text)
+        return
     if not msgs:   # 새 작업의 첫 말: 먼저 무엇을 원하는지 이해하고(구체적이지 않으면 질문), 폴더 전체를 같이 준다 + 맞는 스킬
         extra_ask = ask_intent(orig_text)
         if extra_ask:
