@@ -9,6 +9,8 @@ started** when you hit your usage limit, or take a piece of work from Claude in 
 
 > Beta: free while it is in beta. It has been tested on a small number of tasks; expect rough edges and please send feedback.
 
+**Website — see the demo, leave feedback, get notified when the full version launches:** https://claude.ai/artifact/4pK1uSSLC1VF26zf5kwyWe
+
 ## Requirements
 - A Mac (Apple Silicon recommended), macOS 13 or newer, 16 GB memory recommended, about 10 GB free disk
 - [Ollama](https://ollama.com/download) — runs the model on your Mac
@@ -67,7 +69,7 @@ It removes the program and the command, and asks before removing your settings a
 ## License
 MIT — free to use, change and share, keep the copyright notice (see `LICENSE`). extra is open source so you can see exactly
 what it does with your code. The built-in skills keep their own open-source licenses (`THIRD_PARTY_NOTICES.md`).
-How it works: see `HOW_IT_WORKS.md`.
+How it works: see `HOW_IT_WORKS.md`. Website: https://claude.ai/artifact/4pK1uSSLC1VF26zf5kwyWe
 
 ## Credits
 Made by Jeon Seol, with Claude (Anthropic).
