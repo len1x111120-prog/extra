@@ -1573,6 +1573,20 @@ def ask_intent(user_text):
     return a   # 직접 입력한 내용
 
 
+def act_label(thought):
+    """생각의 Act 줄에서 다음 행동을 읽어 티커 문구를 정한다 (11/16: 파일 쓰는 동안 '멈춤'처럼 보였다)."""
+    th = thought or ""
+    if re.search(r"\b(write_file|edit_file)\b", th, re.I):
+        fm = re.search(r"([\w./-]+\.(?:html?|js|jsx|ts|tsx|css|py|json|md|txt))", th)
+        return f"writing {fm.group(1)}" if fm else "writing the file"
+    if re.search(r"\b(writ|creat|sav|generat|add|updat)\w*\b[^\n]{0,40}\b(file|code|index|\.html|\.js|\.css|\.py)\b", th, re.I):
+        fm = re.search(r"([\w./-]+\.(?:html?|js|jsx|ts|tsx|css|py|json|md))", th)
+        return f"writing {fm.group(1)}" if fm else "writing the file"
+    if re.search(r"\brun_command\b|\brun\b.{0,20}\b(check|test|python|npm|node)\b", th, re.I):
+        return "running a command"
+    return "working on the next action"
+
+
 def is_chat(text):
     """작업이 아니라 대화·단순 질문인가 (홈에서 빠르게 바로 답하기 위해). 11/16."""
     t = str(text).strip()
@@ -1713,7 +1727,7 @@ def one_turn(msgs, user_text):
             content, calls = "", []
             view = keep_task_view(msgs, state)
             sp = app.ActSplitter(show)
-            tick = Ticker("working on the next action…")
+            tick = Ticker(act_label(thought) + "…")
             for chunk in app.ollama_stream([sys_msg] + view, tools=not done_now, tool_list=TOOLS):
                 m = chunk.get("message") or {}
                 t = m.get("content") or ""
