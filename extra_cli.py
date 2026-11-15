@@ -1465,6 +1465,10 @@ def keep_task_view(msgs, state):
     if first is None:
         return app.fit_view(clean)
     task, rest = clean[first], clean[first + 1:]
+    # 이전 턴은 Plan/Act 만 읽는다 (사용자 11/16: 뒤로 갈수록 느려짐). 생각은 이미 Plan/Act 로 압축돼 있고,
+    # 큰 도구 결과(파일·명령 출력)는 가장 최근 것 하나만 남기고 이전 것은 버린다 — 직전 결과엔 반응해야 하므로 그것만 유지.
+    last_tool = max((i for i, m in enumerate(rest) if m["role"] == "tool"), default=-1)
+    rest = [m for i, m in enumerate(rest) if m["role"] != "tool" or i == last_tool]
     budget = app.TOKEN_BUDGET - app.est_tokens(task.get("content", "")) - 200
     keep = app.fit_view.__wrapped__(rest, budget) if hasattr(app.fit_view, "__wrapped__") else _fit(rest, budget)
     if len(keep) < len(rest):
