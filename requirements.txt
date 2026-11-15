@@ -1,0 +1,2 @@
+pygments>=2.15
+playwright>=1.40

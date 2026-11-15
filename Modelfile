@@ -1,0 +1,4 @@
+# extra-beta: Ollama's Ministral 3 8B (Q4_K_M) with extra's settings
+FROM ministral-3:8b
+PARAMETER num_ctx 32768
+PARAMETER temperature 0.3
