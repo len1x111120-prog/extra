@@ -67,3 +67,6 @@ prompts and guardrails here.
 The model runs on your Mac; your code and chats are not sent anywhere. The only outside requests are the ones a task needs
 (web search via DuckDuckGo then Wikipedia, pages and downloads it opens, package installs). Secrets like `.env` are never read,
 and extra never writes outside the project folder or wipes your home folder. A local-only log is kept in `~/.extra/`.
+
+---
+extra was designed and built by Jeon Seol together with Claude (Anthropic).

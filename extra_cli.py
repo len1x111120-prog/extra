@@ -760,6 +760,26 @@ def text_calls(content):
 def block_calls(answer, thought=""):
     """코드 블록을 저장 호출로 (작은 모델은 긴 코드를 도구 인자 JSON 에 넣기 어려워한다, 11/14 공동 작업 시험).
     'FILE: 경로' 다음 코드 블록, 또는 생각의 Act 가 write_file/edit_file <경로> 이고 코드 블록이 하나뿐일 때만."""
+    # <edit_file>path: ... old: ... new: ...</edit_file> / <write_file>path: ... </write_file> XML 흉내 (11/15: 이 형식을 글로만 쓰고 반복에 빠졌다)
+    xml = []
+    for m in re.finditer(r"<(edit_file|write_file)>(.*?)</\1>", answer, re.S | re.I):
+        kind, body = m.group(1).lower(), m.group(2)
+        pm = re.search(r"path\s*:\s*`?([^\s`\n]+)", body)
+        if not pm:
+            continue
+        if kind == "edit_file":
+            om = re.search(r"old\s*:\s*(.*?)(?:\n\s*new\s*:|$)", body, re.S | re.I)
+            nm = re.search(r"new\s*:\s*(.*)", body, re.S | re.I)
+            if om and nm:
+                xml.append({"id": f"xml_{len(xml)}", "function": {"name": "edit_file",
+                    "arguments": {"path": pm.group(1), "old": om.group(1).strip("\n"), "new": nm.group(1).strip().strip("\n")}}})
+        else:
+            cm = re.search(r"(?:content|code)\s*:\s*\n?(.*)", body, re.S | re.I)
+            if cm:
+                xml.append({"id": f"xml_{len(xml)}", "function": {"name": "write_file",
+                    "arguments": {"path": pm.group(1), "content": cm.group(1).strip("\n") + "\n"}}})
+    if xml:
+        return xml
     blocks = list(re.finditer(r"(?:\**FILE:\**\s*`?([^\s`*]+)`?\s*\n)?```([^\n]*)\n(.*?)\n```", answer, re.S))
     act = re.findall(r"\b(?:write_file|edit_file)\b\W{0,3}`?([\w./-]+\.\w+)`?", thought or "")
     calls = []
@@ -1512,7 +1532,11 @@ def one_turn(msgs, user_text):
         # 행동: 생각만 하고 도구도 답도 없으면, 다시 생각하지 말고 바로 행동만 시킨다 (최대 3 번)
         nxt_paste = ["", False]   # [글로 쓴 코드, 다음 시도에서 저장시키기]
         # 검증에서 끝(Check)을 선언했으면: 도구 없이 마지막 요약만 (11/15: Check 뒤에도 서버·kill·check 를 되풀이했다)
-        done_now = bool(review and re.search(r"^\s*\**\s*Check\s*\**\s*:", thought or "", re.M))
+        checked = state.get("last_check_full", "")   # 검사가 실제로 통과했나 (11/15: 모델이 PASS 뒤에도 안 멈췄다)
+        passed = bool(state.get("last_check")) and bool(re.search(r"\bPASS\b|passed|exit code 0", checked, re.I)) \
+            and not re.search(r"\bFAIL\b|exit code [1-9]", checked)
+        done_now = bool(review and (re.search(r"^\s*\**\s*Check\s*\**\s*:", thought or "", re.M)
+                    or (passed and re.search(r"\b(pass|passed|done|complete|completed|success|succeed|works|working|finish)\b", thought or "", re.I))))
         for act_try in range(4):
             ask_act = ACT_ASK if act_try == 0 else ACT_STRICT
             if done_now:
@@ -1802,7 +1826,33 @@ def pad(text, n):
     return out + " " * max(0, n - w)
 
 
+DEMO_MODE = False  # TEMP (녹화용 11/15): plain `extra` 도 가짜 작업을 보여 준다. 녹화 끝나면 False 로 되돌릴 것.
+
+
+def _demo_on():
+    return DEMO_MODE or bool(os.environ.get("EXTRA_DEMO"))
+
+
+DEMO_SESSIONS = [   # 녹화용 가짜 작업 (EXTRA_DEMO=1). 실제 작업 대신 보여 준다 (사용자 11/15).
+    {"title": "weather-dashboard",  "dir": "~/Projects/weather-dashboard",  "ago": 1800,
+     "last": "Add a 5-day forecast panel and cache the API response."},
+    {"title": "notes-api",          "dir": "~/Projects/notes-api",          "ago": 9000,
+     "last": "Fix the failing test for the search endpoint."},
+    {"title": "portfolio-site",     "dir": "~/Projects/portfolio-site",     "ago": 93600,
+     "last": "Make the landing page responsive on mobile."},
+]
+
+
+def _demo_sessions(limit=9):
+    import time as _t
+    safe = str((CWD / ".extra" / "handoff.md"))   # 혹시 골라도 깨지지 않게 (실제로는 데모 인계 메모)
+    return [{"title": d["title"], "cwd": d["dir"], "mtime": _t.time() - d["ago"], "last": d["last"], "file": safe}
+            for d in DEMO_SESSIONS][:limit]
+
+
 def claude_sessions(limit=9):
+    if _demo_on():
+        return _demo_sessions(limit)
     base = HOME / ".claude" / "projects"
     files = sorted(base.glob("*/*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True) if base.exists() else []
     out = []
@@ -1820,6 +1870,11 @@ def claude_sessions(limit=9):
 
 def find_handoffs(limit=6):
     """Claude 가 인계 메모(.extra/handoff.md)를 남긴 폴더들 (최근 것부터). 경로를 직접 칠 필요가 없게."""
+    if _demo_on():
+        for h in (CWD / ".extra" / "handoff.md", HOME / "Documents" / "typing-speed-test" / ".extra" / "handoff.md"):
+            if h.is_file():
+                return [h]
+        return []
     seen, out = set(), []
     roots = [HOME / d for d in ("Documents", "Code", "Desktop", "Projects", "Developer", "dev", "src")]
     cands = [CWD / ".extra" / "handoff.md"]
@@ -1864,6 +1919,31 @@ def recent_folders(limit=8):
     keep = [(c, t) for c, t in rows.items() if Path(c).is_dir() and Path(c).resolve() != HOME]
     keep.sort(key=lambda ct: ct[1], reverse=True)
     return [c for c, _ in keep[:limit]]
+
+
+def start_menu():
+    """모델을 올린 뒤 무엇을 할지 번호로 고른다 (사용자 11/15): 1) 작업 이어받기 2) 폴더에서 일하기.
+    이어받기를 고르면 이어받을 글을 돌려주고, 폴더를 고르면 None (대화형으로 시작)."""
+    in_project = CWD != HOME
+    here = CWD.name
+    rows = [("Continue a task", "pick up a Claude handoff note or session"),
+            (f"Work in this folder ({here})" if in_project else "Work in a folder",
+             "start a new task here" if in_project else "choose a folder, or make one")]
+    print(f"\n {B}What do you want to do?{R}")
+    for i, (label, desc) in enumerate(rows, 1):
+        mark = f" {D}(Enter){R}" if (i == 2 and in_project) or (i == 1 and not in_project) else ""
+        print(f" {W}{i}{R}  {pad(label, 30)} {D}{desc}{R}{mark}")
+    default = 2 if in_project else 1
+    try:
+        a = read_answer(f"{P} › {R}").strip()
+    except (EOFError, KeyboardInterrupt):
+        print(); return None
+    choice = int(a) if a.isdigit() and 1 <= int(a) <= 2 else default
+    if choice == 1:
+        return pick_session()
+    if not in_project:
+        pick_folder()
+    return None
 
 
 def pick_folder():
@@ -2368,9 +2448,9 @@ def main():
         help_command(" ".join(args[1:])); return
     msgs, first = [], None
     if args[:1] == ["continue"]:    # extra continue [덧붙일 말]: Claude 세션 목록에서 골라 이어서 (그다음은 대화형)
-        warm_up()
+        load_bar()
         first = pick_session()
-        if not first:
+        if first is None:
             return
         if args[1:]:
             first += "\n\nThe user adds: " + " ".join(args[1:])
@@ -2381,16 +2461,16 @@ def main():
         except KeyboardInterrupt:
             print(f"\n{D}stopped{R}")
         return
-    first_setup()        # 맨 처음 한 번만: 언어, 생각, 검증, 허용 범위, 속도 (사용자 11/15)
-    offer_speedup()      # 설정이 켜졌는데 Ollama 가 그 전에 켜진 경우만 알린다
-    warm_up()
+    if first is None:
+        first_setup()        # 맨 처음 한 번만: 언어, 생각, 검증, 허용 범위, 속도 (녹화에 나와야 한다)
+        offer_speedup()      # 설정이 켜졌는데 Ollama 가 그 전에 켜진 경우만 알린다
+        load_bar()           # 모델을 먼저 올린다 (로딩 바), 다 되면 무엇을 할지 고른다 (사용자 11/15)
+        first = start_menu()
+    # (extra continue 는 위에서 이미 로드하고 골랐다)
     UI.on_command = busy_command
-    if not first and CWD == HOME:   # 경로를 치지 않아도 되게: 들어간 다음 고른다 (사용자 11/15)
-        pick_folder()
     FLOG.open(CWD)
     UI.start()          # 아래 입력창을 먼저 켠다 (시작 안내도 기록에 남아 창 크기가 바뀌어도 다시 그려진다)
     banner()
-    load_bar()
     try:
         repl(msgs, first)
     finally:

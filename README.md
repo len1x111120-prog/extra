@@ -1,5 +1,7 @@
 # extra (beta)
 
+*Built by Jeon Seol together with Claude (Anthropic).*
+
 extra is a coding agent that runs in your terminal on a **local model** — no account, no API key, no usage limit.
 It is slow next to a frontier model, so it is built to make up for that with patience: it plans, runs the code, reads the real
 result and tries another way when something fails, for as long as the task needs. It can also **continue a task Claude Code
@@ -13,13 +15,11 @@ started** when you hit your usage limit, or take a piece of work from Claude in 
 - Python 3.9 or newer (comes with the Xcode command line tools: `xcode-select --install`)
 
 ## Install
-Clone this repo and run the installer:
 ```bash
-git clone https://github.com/<you>/extra.git
-cd extra
+tar -xzf extra-0.1.0-beta.tar.gz
+cd extra-0.1.0-beta
 bash install.sh
 ```
-Or download **extra-0.1.0-beta.tar.gz** from the [latest release](../../releases/latest), unpack it, and run `bash install.sh`.
 The installer checks your Mac, downloads the model once (Ollama's `ministral-3:8b`, about 6 GB) and creates `extra-beta`
 from it, installs the program into `~/.extra`, and adds the `extra` command. Run it again to update.
 
