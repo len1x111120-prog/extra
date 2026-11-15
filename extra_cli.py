@@ -211,36 +211,28 @@ def pick_skills(task_text, limit=2):
     return [n for _, n in scored[:limit]]
 
 
-def pick_skills_menu(task_text):
-    """작업을 시작할 때 쓸 스킬을 번호로 복수 선택한다 (사용자 11/16: 스킬이 확실히 적용되게).
-    Enter=추천(자동으로 맞는 것), 번호들(예: 1 2 4)=그 스킬들, all=전부, none=안 씀. 백그라운드에선 자동."""
+def session_skills_menu():
+    """시작할 때('What do you want to do?' 다음) 쓸 스킬을 복수 선택한다 (사용자 11/16). 세션 내내 적용.
+    번호들(예: 1 2 4)=그 스킬들, all=전부, none=안 씀, Enter=전부. 백그라운드/비대화에선 None(작업마다 자동)."""
     sks = list(load_skills().values())
-    if not sks:
-        return []
-    auto = set(pick_skills(task_text, limit=99))   # 키워드로 맞는 것 전부
-    if HEADLESS or not sys.stdin.isatty():
-        return [v["name"] for v in sks if v["name"] in auto]
-    print(f"\n {P}◆{R} {W}Which skills should extra use?{R} {D}(expert instructions it follows){R}")
+    if not sks or HEADLESS or not sys.stdin.isatty():
+        return None
+    print(f"\n {B}Which skills should extra use?{R} {D}(expert instructions it follows while working){R}")
     for i, v in enumerate(sks, 1):
-        sug = f" {G}· suggested{R}" if v["name"] in auto else ""
-        print(f" {W}{i}{R}  {pad(v['name'], 30)} {D}{v['description'][:60]}{R}{sug}")
-    nums = " ".join(str(i) for i, v in enumerate(sks, 1) if v["name"] in auto) or "none"
-    print(f" {D}numbers (e.g. 1 2) · all · none · Enter = suggested ({nums}){R}")
+        print(f" {W}{i}{R}  {pad(v['name'], 30)} {D}{v['description'][:58]}{R}")
+    print(f" {D}numbers (e.g. 1 2) · all · none · Enter = all{R}")
     try:
         a = read_answer(f"{P} › {R}").strip().lower()
     except (EOFError, KeyboardInterrupt):
-        print(); a = ""
-    if a == "" :
-        chosen = [v["name"] for v in sks if v["name"] in auto]
-    elif a in ("all", "a", "전부", "다"):
+        print(); return None
+    if a in ("", "all", "a", "전부", "다"):
         chosen = [v["name"] for v in sks]
     elif a in ("none", "n", "안", "없"):
         chosen = []
     else:
         idx = {int(x) for x in re.findall(r"\d+", a)}
         chosen = [v["name"] for i, v in enumerate(sks, 1) if i in idx]
-    if chosen:
-        print(f" {P}✦ using skills:{R} {W}{', '.join(chosen)}{R}")
+    print(f" {P}✦ skills:{R} {W}{', '.join(chosen) if chosen else 'none'}{R}")
     return chosen
 
 
@@ -1670,7 +1662,10 @@ def one_turn(msgs, user_text):
             user_text = user_text + "\n\n[The user clarified what they want: " + extra_ask + "]"
         if CWD != HOME:   # 홈에서 시작 = 아직 뭘 할지 안 정한 것 → 폴더를 훑지 않는다 (사용자 11/15)
             user_text = user_text + "\n\n[" + project_overview() + "]"
-        for name in pick_skills_menu(orig_text):
+        use = SESSION_SKILLS if SESSION_SKILLS is not None else pick_skills(orig_text)
+        if use:
+            print(f"{P}✦ using skills:{R} {W}{', '.join(use)}{R}")
+        for name in use:
             user_text += "\n\n" + skill_text(name)
             clog({"skill": name})
     msgs.append({"role": "user", "content": user_text})
@@ -2137,7 +2132,7 @@ def start_menu():
     이어받기를 고르면 이어받을 글을 돌려주고, 나머지는 None (대화형으로 바로 시작)."""
     in_project = CWD != HOME
     here = CWD.name
-    rows = [("Continue a task", "pick up a Claude handoff note or session"),
+    rows = [("Work with Claude", "continue a Claude handoff or pick up a Claude Code session"),
             (f"Work in this folder ({here})" if in_project else "Work in a folder",
              "start a new task here" if in_project else "choose a folder, or make one"),
             ("Just start", "skip this and start typing here" + (f" (~/{CWD.relative_to(HOME)})" if in_project and str(CWD).startswith(str(HOME)) else " (home folder)" if CWD == HOME else f" ({here})"))]
@@ -2414,6 +2409,7 @@ def folder_summary():
 
 WARM = {"thread": None, "start": 0.0, "ok": None}
 PWARM = {"thread": None, "start": 0.0, "ok": None}   # 시스템 프롬프트 읽기(캐시) 상태
+SESSION_SKILLS = None   # 시작할 때 고른 스킬 (세션 내내 적용). None = 안 골랐으니 자동.
 LOAD_FILE = HOME / ".extra" / "load_seconds"
 
 
@@ -2722,6 +2718,8 @@ def main():
         offer_speedup()      # 설정이 켜졌는데 Ollama 가 그 전에 켜진 경우만 알린다
         load_bar()           # 모델을 먼저 올린다 (로딩 바), 다 되면 무엇을 할지 고른다 (사용자 11/15)
         first = start_menu()
+        global SESSION_SKILLS
+        SESSION_SKILLS = session_skills_menu()   # 'What do you want to do?' 다음에 스킬 고르기 (사용자 11/16)
     # (extra continue 는 위에서 이미 로드하고 골랐다)
     UI.on_command = busy_command
     FLOG.open(CWD)
