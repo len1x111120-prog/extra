@@ -121,10 +121,12 @@ CHOOSING HOW TO BUILD (the user may be a beginner who does not know which tools 
 - Prefer what already works on this Mac: first check with run_command (python3 --version, node --version, ls) before installing anything big.
 - Good defaults: a game or anything visual → a web page (index.html + JavaScript files; for 3D use Three.js loaded from a CDN such as
   https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js), which needs no install. JavaScript modules do not load from a
-  double-clicked file, so serve the folder: python3 -m http.server 8000, then open http://localhost:8000 in the browser.
+  double-clicked file, so serve the folder on an uncommon port (not 8000 — it is often taken; use something like 8787):
+  python3 -m http.server 8787, then open http://localhost:8787. If a server command fails because the port is in use, pick a
+  different port and try that one — do NOT kill other processes to free a port.
   A tool or script → Python in a .venv. A website or server → Node or Python.
 - Say your choice and the reason in one short sentence before building, and at the end tell the user exactly how to run it
-  (for example: run python3 -m http.server 8000 in the project folder and open http://localhost:8000).
+  (for example: run python3 -m http.server 8787 in the project folder and open http://localhost:8787).
 
 TOOLS ARE THE ONLY WAY YOU CAN DO ANYTHING (most important rule):
 - Typing a file name and a code block in your reply does NOT create a file. Nothing happens unless you make a real tool call.
@@ -145,7 +147,8 @@ GETTING WHAT YOU NEED FROM THE INTERNET:
 - On this Mac use python3. System Python is "externally managed", so for Python packages make a virtual environment in the project
   (python3 -m venv .venv, then .venv/bin/pip install ...) and run code with .venv/bin/python. Homebrew (if installed) is `brew`.
 - Servers and other commands that never finish (python3 -m http.server, npm run dev, flask run, ...) are started in the background
-  automatically; do not wait for them. Check them with curl (for example curl -s http://localhost:8000 | head) and keep working.
+  automatically; do not wait for them. Check them with curl on the SAME port you served (for example curl -s http://localhost:8787 | head)
+  and keep working. If curl returns something you did not build, the port belongs to another program — serve on a different port.
 - Prefer non-interactive flags (-y, --yes, --no-input) so commands do not stop to wait for an answer. If a command does ask, the user answers it in the terminal.
 
 Rules:
@@ -276,20 +279,25 @@ ACT_ASK = ("[Carry out your Act NOW with a real tool call (write_file, edit_file
            "(in the answer language from your instructions). Your thinking is already done: do not write <think> again, do not restate the plan — act now.]")
 # 생각 수준 (사용자 11/14): low = 계획과 실행만 / medium = 여러 방법(Options)까지, 예측은 안 함 / high = 여러 방법 + 예측(Expect)
 THINK_LEVEL = {
-    "low": "Purpose / Plan / Act (\"So I will do: <exact tool call>\"). Do not list options and do not predict outcomes; just decide and act.",
-    "medium": "Purpose / Problem / Options (two or three ways to do the next step) / Act (\"So I will do: <exact tool call>\" — the best option). Do not predict outcomes.",
-    "high": "Purpose / Problem / Options (two or three ways to do the next step) / Expect (for each option, \"If I do this, then this will happen\") / "
-            "Act (\"So I will do: <exact tool call>\" — the option your predictions say is best).",
+    "low": "Purpose / Plan / Act (\"So I will do: <exact tool call>\"). Decide and act; no options.",
+    "medium": "Purpose / Problem / Plan / Act (\"So I will do: <exact tool call>\").",
+    "high": "Purpose / Problem / Plan / Expect / Act (\"So I will do: <exact tool call>\").",
 }
-# Purpose: 무엇을 원하는지, 그리고 그에 맞는 적정 범위 (간단한 건 간단하게 — 11/18: 간단한 질문도 길게 늘렸다)
-PURPOSE_HINT = ("Purpose = in one line, what the user actually wants here and how big the answer should be. Match the scale to the "
-                "request: a simple question gets a short direct answer, not a project. Do not add work nobody asked for.")
+# 각 칸의 뜻 (11/18 사용자: Purpose 를 먼저, Expect 는 '내 행동의 결과' 예측)
+PURPOSE_HINT = (
+    "Write EACH label in English exactly as: Purpose, Problem, Plan, Expect, Act — even if the user writes another language.\n"
+    "Purpose = in one line, what the user actually wants and how big the answer should be. Match the scale: a simple question gets a "
+    "short direct answer, not a project; do not add work nobody asked for.\n"
+    "Expect = before you act, predict what YOUR action will CAUSE — its effect and what could go wrong — and change the action if it "
+    "would fail. For example: \"If I start a server on port 8000 and something already uses 8000, it will fail — so I will let the OS "
+    "pick a free port instead.\" \"If I overwrite app.js, the working parts are lost — so I will edit just the one function.\"")
 
 
 def think_ask():
     lvl = SETTINGS.get("effort", "high")
-    return (f"[Think in English only. Write ONLY your thinking now, inside <think>...</think>, short: {THINK_LEVEL.get(lvl, THINK_LEVEL['high'])} "
-            + PURPOSE_HINT + " The Act names the one tool you will call next: write_file, edit_file, run_command, download_file, read_file, ... "
+    return (f"[Think in English only — all of your thinking and every label is in English. Write ONLY your thinking now, inside "
+            f"<think>...</think>, short, with these labels in order: {THINK_LEVEL.get(lvl, THINK_LEVEL['high'])}\n"
+            + PURPOSE_HINT + "\nThe Act names the one tool you will call next: write_file, edit_file, run_command, download_file, read_file, ... "
             "Do not plan to ask the user; decide yourself and keep working. Stop right after </think>.]")
 # 검증 (사용자 11/14: 검토는 코드를 훑는 게 아니라 직접 돌려 보면서 확인하는 것 → 이름도 '검증')
 REVIEW_ASK = ("[Think in English only. Write ONLY your verification now, inside <think>...</think>. Verifying means RUNNING things, not reading code: "
