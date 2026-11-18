@@ -11,7 +11,7 @@
   extra jobs / show ID / apply ID   넘겨받은 일 목록 / 결과와 바뀐 내용 / 프로젝트에 적용
   extra prompt [add|clear|edit] [--global]   내 지시 (기본 규칙보다 아래에 붙는다)
   안에서: /continue, /prompt, /set, /new 새 대화, /exit 끝, Ctrl-C 지금 하던 것 멈추기"""
-import difflib, fnmatch, json, os, re, readline, shlex, shutil, subprocess, sys, time, urllib.request  # noqa: F401 (readline: 입력 줄 편집·기록)
+import difflib, fnmatch, json, os, re, readline, shlex, shutil, subprocess, sys, tempfile, time, urllib.request, urllib.error  # noqa: F401 (readline: 입력 줄 편집·기록)
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
@@ -730,7 +730,7 @@ def t_see_window(window="", look_for=""):
     q = str(window).strip().lower()
     if not q:
         return "open windows (give part of a name to look at one):\n" + "\n".join(f"- {o} — {n}" for o, n, *_ in wins[:20])
-    match = [w for w in wins if q in w[0].lower() or q in w[1].lower()]
+    match = [w for w in wins if q in w[0].lower()] or [w for w in wins if q in w[1].lower()]   # 앱 이름을 제목보다 먼저
     if not match:
         return "no window matches '%s'. Open windows:\n" % window + "\n".join(f"- {o} — {n}" for o, n, *_ in wins[:20])
     owner, title, wid, ww, hh = match[0]
@@ -738,6 +738,7 @@ def t_see_window(window="", look_for=""):
     r = subprocess.run(["screencapture", "-o", "-x", "-l", str(wid), img], capture_output=True, text=True)
     if r.returncode != 0 or not os.path.exists(img):
         return f"could not capture the window ({r.stderr.strip()[:80]}). On macOS, allow Terminal to record the screen in System Settings > Privacy & Security > Screen Recording."
+    subprocess.run(["sips", "-Z", "1024", img], capture_output=True)   # 줄여서 비전 모델이 빠르게 (레티나 풀해상도는 느리다)
     import base64
     try:
         b64 = base64.b64encode(open(img, "rb").read()).decode()

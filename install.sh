@@ -104,4 +104,11 @@ case ":$PATH:" in
     ;;
 esac
 
+# Optional: a vision model so extra can look at app windows (see_window). Not required; install later with: ollama pull minicpm-v
+if [ "$SKIP_MODEL" != "1" ] && ! "$OLLAMA_BIN" list 2>/dev/null | awk 'NR>1{print $1}' | grep -q "^minicpm-v"; then
+  printf "\n${d}Optional: a vision model (minicpm-v, ~5.5 GB) lets extra look at app windows to verify GUIs and games.${r}\n"
+  printf "${d}Install it now? extra works without it. [y/N] ${r}"; read -r va
+  if [[ "$va" =~ ^[Yy] ]]; then "$OLLAMA_BIN" pull minicpm-v; fi
+fi
+
 printf "\n${g}${b}Done.${r} Open a project folder and start:\n\n    cd ~/my-project\n    extra\n\n${d}The first start asks five quick settings. Uninstall: bash %s/uninstall.sh${r}\n" "$HERE"
