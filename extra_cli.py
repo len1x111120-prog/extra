@@ -136,6 +136,9 @@ TOOLS ARE THE ONLY WAY YOU CAN DO ANYTHING (most important rule):
 GETTING WHAT YOU NEED FROM THE INTERNET:
 - If you need a package, a library, a tool or a file, get it yourself: run_command with pip / npm / brew / git clone, or download_file.
   The user approves each install or download with y/n, so just ask through the tool and continue after it is approved.
+- When something is hard to build from scratch, do not reinvent it: web_search for an existing library or tool that already solves it
+  (on PyPI, npm, or a GitHub project), then install and use it. A small model goes much further by standing on good existing tools than
+  by writing everything itself. Pick well-known, maintained ones and read their README (web_fetch) for how to call them.
 - If the user says no, choose another way and keep going.
 - Never guess a download URL. First web_fetch the official download or releases page (for example the project's GitHub releases page),
   copy the exact file link from it, then download_file that link. web_fetch reads a page; download_file is only for real files.
@@ -273,17 +276,20 @@ ACT_ASK = ("[Carry out your Act NOW with a real tool call (write_file, edit_file
            "(in the answer language from your instructions). Your thinking is already done: do not write <think> again, do not restate the plan — act now.]")
 # 생각 수준 (사용자 11/14): low = 계획과 실행만 / medium = 여러 방법(Options)까지, 예측은 안 함 / high = 여러 방법 + 예측(Expect)
 THINK_LEVEL = {
-    "low": "Problem / Plan / Act (\"So I will do: <exact tool call>\"). Do not list options and do not predict outcomes; just decide and act.",
-    "medium": "Problem / Plan / Options (two or three ways to do the next step) / Act (\"So I will do: <exact tool call>\" — the best option). Do not predict outcomes.",
-    "high": "Problem / Plan / Options (two or three ways to do the next step) / Expect (for each option, \"If I do this, then this will happen\") / "
+    "low": "Purpose / Plan / Act (\"So I will do: <exact tool call>\"). Do not list options and do not predict outcomes; just decide and act.",
+    "medium": "Purpose / Problem / Options (two or three ways to do the next step) / Act (\"So I will do: <exact tool call>\" — the best option). Do not predict outcomes.",
+    "high": "Purpose / Problem / Options (two or three ways to do the next step) / Expect (for each option, \"If I do this, then this will happen\") / "
             "Act (\"So I will do: <exact tool call>\" — the option your predictions say is best).",
 }
+# Purpose: 무엇을 원하는지, 그리고 그에 맞는 적정 범위 (간단한 건 간단하게 — 11/18: 간단한 질문도 길게 늘렸다)
+PURPOSE_HINT = ("Purpose = in one line, what the user actually wants here and how big the answer should be. Match the scale to the "
+                "request: a simple question gets a short direct answer, not a project. Do not add work nobody asked for.")
 
 
 def think_ask():
     lvl = SETTINGS.get("effort", "high")
     return (f"[Think in English only. Write ONLY your thinking now, inside <think>...</think>, short: {THINK_LEVEL.get(lvl, THINK_LEVEL['high'])} "
-            "The Act names the one tool you will call next: write_file, edit_file, run_command, download_file, read_file, ... "
+            + PURPOSE_HINT + " The Act names the one tool you will call next: write_file, edit_file, run_command, download_file, read_file, ... "
             "Do not plan to ask the user; decide yourself and keep working. Stop right after </think>.]")
 # 검증 (사용자 11/14: 검토는 코드를 훑는 게 아니라 직접 돌려 보면서 확인하는 것 → 이름도 '검증')
 REVIEW_ASK = ("[Think in English only. Write ONLY your verification now, inside <think>...</think>. Verifying means RUNNING things, not reading code: "
@@ -1245,7 +1251,7 @@ def shown_lines(text):
         end = keys[i + 1].start() if i + 1 < len(keys) else len(text)
         body = next((l.strip() for l in text[m.end():end].splitlines() if l.strip()), "")
         parts.setdefault(m.group(1), body)
-    out = [f"{k}: {parts[k]}" for k in ("Plan", "Act") if parts.get(k)]
+    out = [f"{k}: {parts[k]}" for k in ("Purpose", "Plan", "Act") if parts.get(k)]
     if not out:
         out = [f"{k}: {parts[k]}" for k in ("Result", "Check") if parts.get(k)][:1]
     return out or [text.strip().splitlines()[0][:200] if text.strip() else ""]

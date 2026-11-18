@@ -42,7 +42,7 @@ def ollama_stream(msgs, tools=True, stop=None, temp=0.3, tool_list=None):
 
 
 THINK_RE = re.compile(r"<think>.*?(</think>|$)", re.S)
-KEY_RE = re.compile(r"^\s*\**\s*(Problem|Plan|Expect|Act|Result|Failed|Alternatives|Check|Options|Decide)\s*\**\s*:", re.M)
+KEY_RE = re.compile(r"^\s*\**\s*(Purpose|Problem|Plan|Expect|Act|Result|Failed|Alternatives|Check|Options|Decide)\s*\**\s*:", re.M)
 
 
 def compact_thought(thought):
@@ -51,7 +51,7 @@ def compact_thought(thought):
     for i, m in enumerate(keys):
         end = keys[i + 1].start() if i + 1 < len(keys) else len(thought)
         parts.setdefault(m.group(1), thought[m.end():end].strip())
-    keep = [f"{k}: {parts[k]}" for k in ("Plan", "Act") if parts.get(k)]
+    keep = [f"{k}: {parts[k]}" for k in ("Purpose", "Plan", "Act") if parts.get(k)]
     if not keep:
         for k in ("Result", "Check"):
             if parts.get(k):
