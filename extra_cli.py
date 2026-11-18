@@ -1588,6 +1588,8 @@ def ask_intent(user_text):
     options = [l.lstrip("-*•0123456789. ").strip() for l in lines[1:] if l.lstrip().startswith(("-", "*", "•")) or re.match(r"\s*\d+[.)]", l)]
     if not options:
         return None
+    if UI.on:
+        UI.asking = True   # 선택지 출력 전에 미리 켠다: 바로 친 번호도 답변으로 받게 (11/18 버그)
     print(f"\n {P}◆{R} {W}{question}{R}")
     for i, opt in enumerate(options[:4], 1):
         print(f" {W}{i}{R}  {opt}")
@@ -1595,6 +1597,8 @@ def ask_intent(user_text):
     try:
         a = read_answer(f"{P} › {R}").strip()
     except (EOFError, KeyboardInterrupt):
+        if UI.on:
+            UI.asking = False
         print(); return None
     if not a:
         return None   # 그냥 진행
@@ -2161,6 +2165,8 @@ def claude_jobs_menu():
         print(f" {W}{i}{R}  {c}{st:<18}{R} {D}{when:>7}  {jid}{R}  {task}")
         print(f"      {D}{folder.replace(str(HOME), '~')}{R}")
     print(f" {D}number = view it (then apply) · Enter = skip{R}")
+    if UI.on:
+        UI.asking = True
     try:
         a = read_answer(f"{P} › {R}").strip()
     except (EOFError, KeyboardInterrupt):
