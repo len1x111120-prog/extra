@@ -293,6 +293,31 @@ PURPOSE_HINT = (
     "pick a free port instead.\" \"If I overwrite app.js, the working parts are lost — so I will edit just the one function.\"")
 
 
+COMPRESS_OVER = 2000   # 도구 결과가 이보다 길면 모델이 스스로 500 자로 요약 (사용자 11/18)
+COMPRESS_SYS = ("Summarize the tool output below to UNDER 500 characters. Keep exactly what the next step needs: errors and "
+                "tracebacks, numbers, file paths, status lines, and the final result. Drop repetition and boilerplate. "
+                "Output ONLY the summary, in English, no preface.")
+
+
+def compress_result(text):
+    """읽어야 할 글이 2000 자를 넘으면 모델이 스스로 500 자로 압축한다. 스피너로 'compressing…' 을 보여 준다."""
+    tick = Ticker("compressing the output")
+    out = ""
+    try:
+        for chunk in app.ollama_stream([{"role": "system", "content": COMPRESS_SYS},
+                                        {"role": "user", "content": str(text)[:8000]}], tools=False, temp=0.0):
+            out += (chunk.get("message") or {}).get("content") or ""
+            if len(out) > 700:
+                break
+    except Exception:
+        tick.stop(); return text
+    tick.stop()
+    out = app.THINK_RE.sub("", out).strip()
+    if not out:
+        return text
+    return out[:600] + f"\n[compressed from {len(str(text))} chars]"
+
+
 def think_ask():
     lvl = SETTINGS.get("effort", "high")
     return (f"[Think in English only — all of your thinking and every label is in English. Write ONLY your thinking now, inside "
@@ -1927,7 +1952,10 @@ def one_turn(msgs, user_text):
                           "check already passes, finish now: write Check, say what you verified and what the user should look at themselves.]")
             show_result(result, name)
             clog({"tool": name, "args": {k: str(v)[:200] for k, v in args.items()}, "result": str(result)[:1000]})
-            msgs.append({"role": "tool", "content": str(result), "tool_name": name})
+            keep = str(result)
+            if name != "read_file" and len(keep) > COMPRESS_OVER:   # 2000 자 초과: 멈추고 스스로 500 자로 압축 (사용자 11/18)
+                keep = compress_result(keep)
+            msgs.append({"role": "tool", "content": keep, "tool_name": name})
             state["worked"] = True
             if name in ("write_file", "edit_file") and str(result).startswith(("saved", "edited")):
                 state["ver"] = state.get("ver", 0) + 1    # 파일이 바뀌었다: 같은 명령(check 다시 돌리기)도 새 행동이다 (11/15)
