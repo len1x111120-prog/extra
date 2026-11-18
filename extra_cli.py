@@ -166,6 +166,8 @@ Rules:
 - If the user asks how to use extra itself (commands, settings, features), answer briefly and suggest /help <question> for details.
 - Know what you cannot see: you cannot see a browser window, its console or its network tab. `open <url>` only shows the page to the
   user; once is enough. Verify web pages with things you can read: the task's check script, curl on the files and APIs, reading the code.
+- For a GUI app or a game you cannot read any other way, use see_window to screenshot that window (even if covered) and have a vision
+  model describe it — then verify from that description. Prefer a check script or curl for web pages; use see_window when nothing else can see it.
   JavaScript that runs in the browser does not run under curl. When the task's check passes and you have verified what you can observe,
   finish with Check and tell the user what to look at in the browser.
 - Do not repeat the same command hoping for a different result. If it gave the same result twice, use a different way.
@@ -273,6 +275,10 @@ TOOLS = [
     tool("web_fetch", "Read a public web page.", {"url": "http or https address"}, ["url"]),
     tool("download_file", "Download a file from the internet into the project.", {"url": "http or https address", "path": "where to save it in the project"}, ["url", "path"]),
     tool("use_skill", "Load a skill: short expert instructions for a kind of work (see the skills list in your instructions).", {"name": "skill name"}, ["name"]),
+    tool("see_window", "Look at an app window and get a description of what is on it (a vision model reads the screenshot). Use this to "
+         "verify a GUI app or a game you cannot read any other way. It captures that window even if other windows cover it. "
+         "Give part of the app name or window title (e.g. 'Chrome', 'Preview', 'my-game'). Leave empty to list the open windows.",
+         {"window": "part of the app name or window title", "look_for": "what to check, optional (e.g. 'is the car on the track?')"}, []),
 ]
 ACT_ASK = ("[Carry out your Act NOW with a real tool call (write_file, edit_file, run_command, download_file, ...). A code block in your reply does "
            "not create anything. Only if the whole task is finished and verified, write a short final summary for the user "
@@ -697,6 +703,67 @@ def run_background(c):
             + f"Stop it with: kill {pr.pid}")
 
 
+VISION_MODEL = os.environ.get("EXTRA_VISION_MODEL", "minicpm-v:latest")   # 창 스샷을 읽는 비전 모델 (extra 와 함께 메모리에 올림)
+
+
+def list_windows():
+    """화면에 있는 보통 앱 창들: (owner, title, id, w, h). Quartz 로 열거 (가려진 창도 id 로 캡처 가능)."""
+    try:
+        import Quartz
+    except Exception:
+        return []
+    opt = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
+    out = []
+    for w in Quartz.CGWindowListCopyWindowInfo(opt, Quartz.kCGNullWindowID) or []:
+        b = w.get("kCGWindowBounds", {})
+        if w.get("kCGWindowLayer", 0) == 0 and b.get("Width", 0) > 120 and b.get("Height", 0) > 80:
+            out.append((w.get("kCGWindowOwnerName", ""), w.get("kCGWindowName", "") or "", w.get("kCGWindowNumber"),
+                        int(b["Width"]), int(b["Height"])))
+    return out
+
+
+def t_see_window(window="", look_for=""):
+    """특정 창을 (가려져 있어도) 스샷 찍어 비전 모델로 읽는다 (사용자 11/18). window 가 비면 창 목록을 돌려준다."""
+    wins = list_windows()
+    if not wins:
+        return "could not list windows (no screen access, or run on a Mac with the Terminal allowed to record the screen in System Settings > Privacy & Security > Screen Recording)."
+    q = str(window).strip().lower()
+    if not q:
+        return "open windows (give part of a name to look at one):\n" + "\n".join(f"- {o} — {n}" for o, n, *_ in wins[:20])
+    match = [w for w in wins if q in w[0].lower() or q in w[1].lower()]
+    if not match:
+        return "no window matches '%s'. Open windows:\n" % window + "\n".join(f"- {o} — {n}" for o, n, *_ in wins[:20])
+    owner, title, wid, ww, hh = match[0]
+    img = os.path.join(tempfile.gettempdir(), f"extra_see_{wid}.png")
+    r = subprocess.run(["screencapture", "-o", "-x", "-l", str(wid), img], capture_output=True, text=True)
+    if r.returncode != 0 or not os.path.exists(img):
+        return f"could not capture the window ({r.stderr.strip()[:80]}). On macOS, allow Terminal to record the screen in System Settings > Privacy & Security > Screen Recording."
+    import base64
+    try:
+        b64 = base64.b64encode(open(img, "rb").read()).decode()
+    except OSError as e:
+        return f"could not read the screenshot: {e}"
+    prompt = ("Describe exactly what is shown in this app window. Read any visible text, numbers and status. "
+              + (f"The caller wants to know: {look_for}. Answer that first, then describe the rest." if look_for else "Note anything that looks like an error or a broken layout."))
+    tick = Ticker(f"looking at {owner}")
+    try:
+        body = {"model": VISION_MODEL, "messages": [{"role": "user", "content": prompt, "images": [b64]}],
+                "stream": False, "keep_alive": "30m", "options": {"temperature": 0.1}}
+        req = urllib.request.Request(app.OLLAMA_CHAT, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+        res = json.loads(urllib.request.urlopen(req, timeout=180).read())
+        desc = (res.get("message") or {}).get("content", "").strip()
+    except urllib.error.HTTPError as e:
+        tick.stop()
+        if e.code == 404:
+            return (f"the vision model '{VISION_MODEL}' is not installed. Install it once with run_command: "
+                    f"ollama pull {VISION_MODEL}")
+        return f"vision model error: {e}"
+    except Exception as e:
+        tick.stop(); return f"could not read the window: {type(e).__name__}: {e}"
+    tick.stop()
+    return f"(looked at {owner} — {title[:60]})\n" + (desc or "the vision model returned nothing.")
+
+
 def t_run_command(command):
     c = str(command).strip()
     # 명령 앞에 도구 이름을 붙여 쓴 경우 (11/15: 'run_command python3 check.py' → exit 127 이 나자 '도구가 고장 났다' 고 판단했다)
@@ -714,6 +781,11 @@ def t_run_command(command):
         if re.search(rf"(>>?|\bsed\s+-i\S*|\brm\b|\bmv\b|\bcp\b|\btee\b|\btruncate\b)[^|;&]*\b{re.escape(rel)}\b", c):
             return f"refused: {rel} is the task's check. Do not change it; change the code so that it passes."
     kind = "danger" if DANGER_RE.search(c) else "install" if INSTALL_RE.search(c) and not re.search(r"[;&|`]", c) else "run"
+    if kind == "install":   # 도구/라이브러리를 찾아서 쓴다 — 이름을 보여 준다 (사용자 11/18)
+        m = re.search(r"(?:pip3?|pip install|uv (?:pip|add)|npm (?:i|install)|pnpm (?:i|add)|yarn add|brew install|gem install|cargo install|go install|pipx install|conda install|mamba install)\s+([^\s;&|]+)|git clone\s+\S+/([^\s/]+?)(?:\.git)?(?:\s|$)", c)
+        tn = (m.group(1) or m.group(2)) if m else None
+        if tn:
+            print(f"{P}✦ tool:{R} {W}{tn}{R}")
     if not safe and not ask(kind, f"Run: {c}"):
         return denied()
     # 명령의 출력은 흐리게 바로 보여 주고(설치 진행 상황 등), 명령이 직접 묻는 질문(Proceed? [y/N])에는 사용자가 터미널에서 답한다.
@@ -801,7 +873,7 @@ def t_download_file(url, path):
 
 
 CALLS = {"use_skill": t_use_skill, "read_file": t_read_file, "list_dir": t_list_dir, "find_files": t_find_files, "search_text": t_search_text, "write_file": t_write_file,
-         "edit_file": t_edit_file, "run_command": t_run_command, "download_file": t_download_file, "web_search": lambda query: T.web_search(query), "web_fetch": lambda url: T.web_fetch(url)}
+         "edit_file": t_edit_file, "run_command": t_run_command, "download_file": t_download_file, "web_search": lambda query: T.web_search(query), "web_fetch": lambda url: T.web_fetch(url), "see_window": lambda window="", look_for="": t_see_window(window, look_for)}
 
 
 # ---------------- 화면 ----------------
